@@ -97,6 +97,11 @@ router.beforeEach((to, from, next) => {
     }
   }
 
+  // 4. Protect role-selection from unauthenticated users
+  if (to.name === 'role-selection' && !authStore.isLoggedIn) {
+    return next({ name: 'login' })
+  }
+
   // If user is logged in and tries to access login/register or role selection when they already have active role
   if (authStore.isLoggedIn) {
     if (to.name === 'login' || to.name === 'register') {
