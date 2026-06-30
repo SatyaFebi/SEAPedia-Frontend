@@ -7,228 +7,163 @@ const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
 
 const user = computed(() => authStore.user)
-
-// Available pickup jobs (orders status: Menunggu Pengirim)
 const jobs = computed(() => ordersStore.availableJobs)
-
-// Driver active delivery (orders assigned to this driver with status Sedang Dikirim)
-const activeJobs = computed(() => {
-  return ordersStore.orders.filter(o => o.driver_id === user.value?.id && o.status === 'Sedang Dikirim')
-})
-
-// Driver completed jobs
-const completedJobs = computed(() => {
-  return ordersStore.orders.filter(o => o.driver_id === user.value?.id && o.status === 'Pesanan Selesai')
-})
-
-// Earnings calculation
+const activeJobs = computed(() => ordersStore.orders.filter(o => o.driver_id === user.value?.id && o.status === 'Sedang Dikirim'))
+const completedJobs = computed(() => ordersStore.orders.filter(o => o.driver_id === user.value?.id && o.status === 'Pesanan Selesai'))
 const totalEarnings = computed(() => ordersStore.getDriverEarnings(user.value?.id))
 
 const actionMessage = ref('')
 
 function handleAcceptJob(orderId) {
-  actionMessage.value = ''
-  // Transition status: Menunggu Pengirim -> Sedang Dikirim
   const success = ordersStore.transitionOrderStatus(orderId, 'Sedang Dikirim', {
     driver_id: user.value.id,
     driver_name: user.value.name
   })
-  if (success) {
-    triggerAlert('Pekerjaan diambil! Segera ambil barang di toko dan antarkan ke pembeli.')
-  }
+  if (success) triggerAlert('Pekerjaan diambil! Segera ambil barang di toko.')
 }
 
 function handleCompleteJob(orderId) {
-  actionMessage.value = ''
-  // Transition status: Sedang Dikirim -> Pesanan Selesai
   const success = ordersStore.transitionOrderStatus(orderId, 'Pesanan Selesai')
-  if (success) {
-    triggerAlert('Pesanan berhasil diantar! Komisi telah ditambahkan ke statement Anda.')
-  }
+  if (success) triggerAlert('Pesanan berhasil diantar! Komisi ditambahkan.')
 }
 
 function handleFailJob(orderId) {
-  actionMessage.value = ''
-  // Transition status: Sedang Dikirim -> Dikembalikan
   const success = ordersStore.transitionOrderStatus(orderId, 'Dikembalikan')
-  if (success) {
-    triggerAlert('Pesanan ditandai gagal/dikembalikan ke toko.')
-  }
+  if (success) triggerAlert('Pesanan ditandai gagal/dikembalikan ke toko.')
 }
 
 function triggerAlert(msg) {
   actionMessage.value = msg
-  setTimeout(() => {
-    actionMessage.value = ''
-  }, 4000)
+  setTimeout(() => { actionMessage.value = '' }, 4000)
 }
 </script>
 
 <template>
-  <div class="space-y-8 text-slate-200">
-    
-    <!-- Driver Stats & Header -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl md:col-span-2">
-        <h2 class="text-xl font-bold text-slate-100">Halo Driver, {{ user?.name }}!</h2>
-        <p class="text-slate-400 text-xs mt-1">Cari pekerjaan pengiriman aktif di sekitar Anda, ambil barang, dan antarkan ke alamat tujuan.</p>
-      </div>
+  <div class="space-y-6 text-[#374151]">
 
-      <!-- Earnings Card -->
-      <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between">
-        <div>
-          <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">💰 Pendapatan Driver (Komisi 80%)</p>
-          <h3 class="text-2xl font-extrabold text-emerald-400 mt-2">Rp{{ totalEarnings.toLocaleString('id-ID') }}</h3>
-        </div>
-        <p class="text-[9px] text-slate-650 mt-2">Dari {{ completedJobs.length }} pengiriman yang berhasil diselesaikan</p>
+    <!-- Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="stat-card sm:col-span-2">
+        <p class="font-display font-bold text-[#0D1117] text-lg">Halo, {{ user?.name }}!</p>
+        <p class="text-sm text-[#6B7280] mt-0.5">Cek pekerjaan pengiriman yang tersedia dan mulai antar.</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Total Komisi (80%)</p>
+        <p class="stat-value text-primary-600">Rp{{ totalEarnings.toLocaleString('id-ID') }}</p>
+        <p class="text-xs text-[#9CA3AF] mt-1">{{ completedJobs.length }} pengiriman selesai</p>
       </div>
     </div>
 
-    <!-- Alert Message Banner -->
-    <p v-if="actionMessage" class="bg-emerald-950/40 border border-emerald-900/50 text-emerald-400 p-3 rounded-xl text-xs font-semibold text-center">
+    <!-- Alert -->
+    <div v-if="actionMessage" class="px-4 py-3 bg-primary-50 border border-primary-100 rounded-xl text-sm text-primary-700 font-medium">
       {{ actionMessage }}
-    </p>
+    </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      
-      <!-- Column 1: Jobs Board (Menunggu Pengirim) -->
-      <section class="bg-slate-950 border border-slate-800 p-6 rounded-2xl lg:col-span-2 space-y-6">
-        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-4">
-          🛵 Papan Pekerjaan Pengiriman (Menunggu Pengirim)
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Jobs board -->
+      <div class="card p-6 lg:col-span-2 space-y-5">
+        <h3 class="font-display font-semibold text-[#0D1117] pb-4 border-b border-[#E5E8EC]">
+          Papan Pekerjaan <span class="text-[#9CA3AF] font-normal text-sm">(Menunggu Driver)</span>
         </h3>
 
-        <div v-if="jobs.length === 0" class="text-center py-10 text-slate-600 text-sm">
-          Tidak ada kiriman baru saat ini. Silakan pantau beberapa saat lagi.
+        <div v-if="jobs.length === 0" class="py-10 text-center text-sm text-[#9CA3AF]">
+          Tidak ada pekerjaan tersedia saat ini.
         </div>
 
         <div v-else class="space-y-4">
           <div
             v-for="job in jobs"
             :key="job.id"
-            class="bg-slate-900/60 border border-slate-850 p-5 rounded-xl space-y-4 hover:border-slate-750 transition-colors"
+            class="border border-[#E5E8EC] rounded-xl p-5 space-y-4 hover:border-primary-200 hover:bg-primary-50/20 transition-all"
           >
-            <div class="flex items-center justify-between text-xs pb-2 border-b border-slate-850">
+            <div class="flex items-center justify-between text-xs pb-3 border-b border-[#E5E8EC]">
+              <div class="flex items-center gap-2">
+                <code class="bg-[#E5E8EC] px-2 py-0.5 rounded font-mono text-[#374151]">{{ job.id }}</code>
+                <span class="text-[#6B7280]">{{ job.delivery_method }}</span>
+              </div>
+              <span class="font-display font-semibold text-primary-600 text-sm">+Rp{{ (job.delivery_fee * 0.8).toLocaleString('id-ID') }}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span class="font-mono bg-slate-950 text-amber-500 px-2 py-0.5 rounded font-bold">{{ job.id }}</span>
-                <span class="text-slate-400 ml-2 font-medium">Metode: <strong>{{ job.delivery_method }}</strong></span>
+                <p class="section-label mb-1">Ambil dari</p>
+                <p class="font-medium text-[#0D1117]">{{ job.store_name }}</p>
               </div>
-              <span class="font-mono text-emerald-400 font-bold bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/20">
-                Tarif: Rp{{ (job.delivery_fee * 0.8).toLocaleString('id-ID') }}
-              </span>
-            </div>
-
-            <!-- Details -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div class="space-y-1">
-                <p class="text-[9px] text-slate-500 uppercase tracking-wider font-bold">🏪 Alamat Ambil (Toko)</p>
-                <p class="font-semibold text-slate-200">{{ job.store_name }}</p>
-                <p class="text-slate-400 text-[10px]">Silakan koordinasikan dengan penjual.</p>
-              </div>
-
-              <div class="space-y-1">
-                <p class="text-[9px] text-slate-500 uppercase tracking-wider font-bold">📍 Alamat Antar (Penerima)</p>
-                <p class="font-semibold text-slate-200">{{ job.buyer_name }}</p>
-                <p class="text-slate-300 text-[10px] leading-relaxed line-clamp-2">{{ job.buyer_address }}</p>
+              <div>
+                <p class="section-label mb-1">Antar ke</p>
+                <p class="font-medium text-[#0D1117]">{{ job.buyer_name }}</p>
+                <p class="text-xs text-[#9CA3AF] mt-0.5 line-clamp-1">{{ job.buyer_address }}</p>
               </div>
             </div>
 
-            <!-- Action -->
-            <div class="flex justify-end pt-2">
-              <button
-                @click="handleAcceptJob(job.id)"
-                class="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-colors"
-              >
-                Ambil Pekerjaan Ini
-              </button>
+            <div class="flex justify-end pt-1">
+              <button @click="handleAcceptJob(job.id)" class="btn-primary">Ambil Pekerjaan →</button>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Column 2: Active Delivery and Earnings logs -->
-      <div class="space-y-6">
-        
-        <!-- Active Delivery Job Tracker -->
-        <section class="bg-slate-950 border border-slate-800 p-6 rounded-2xl space-y-4">
-          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-3">
-            ⚡ Pekerjaan Pengiriman Aktif
-          </h3>
+      <!-- Right panel -->
+      <div class="space-y-5">
 
-          <div v-if="activeJobs.length === 0" class="text-center py-6 text-slate-650 text-xs">
-            Anda sedang tidak mengantarkan paket saat ini.
-          </div>
+        <!-- Active jobs -->
+        <div class="card p-5 space-y-4">
+          <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">Sedang Dikirim</h3>
 
-          <div v-else class="space-y-4">
+          <div v-if="activeJobs.length === 0" class="py-5 text-center text-sm text-[#9CA3AF]">Tidak ada pengiriman aktif.</div>
+
+          <div v-else class="space-y-3">
             <div
               v-for="job in activeJobs"
               :key="job.id"
-              class="bg-slate-900 border border-slate-850 p-4 rounded-xl space-y-4"
+              class="border border-[#E5E8EC] rounded-xl p-4 space-y-3 bg-[#FAFAFA]"
             >
-              <div class="flex justify-between items-center text-xs">
-                <span class="font-bold text-emerald-400">{{ job.id }}</span>
-                <span class="text-slate-400 font-bold">{{ job.delivery_method }}</span>
+              <div class="flex items-center justify-between text-xs pb-2 border-b border-[#E5E8EC]">
+                <code class="bg-[#E5E8EC] px-2 py-0.5 rounded font-mono text-[#374151]">{{ job.id }}</code>
+                <span class="text-[#9CA3AF]">{{ job.delivery_method }}</span>
               </div>
-
-              <div class="text-xs space-y-2 border-t border-b border-slate-850 py-3">
+              <div class="text-sm space-y-2">
                 <div>
-                  <p class="text-[9px] text-slate-500 uppercase">Toko Asal:</p>
-                  <p class="font-bold text-slate-300">{{ job.store_name }}</p>
+                  <p class="section-label">Toko</p>
+                  <p class="font-medium text-[#0D1117]">{{ job.store_name }}</p>
                 </div>
                 <div>
-                  <p class="text-[9px] text-slate-500 uppercase">Tujuan Antar:</p>
-                  <p class="font-bold text-slate-300">{{ job.buyer_name }}</p>
-                  <p class="text-slate-400 text-[10px] mt-0.5">{{ job.buyer_address }}</p>
+                  <p class="section-label">Pembeli</p>
+                  <p class="font-medium text-[#0D1117]">{{ job.buyer_name }}</p>
+                  <p class="text-xs text-[#9CA3AF] mt-0.5 leading-relaxed">{{ job.buyer_address }}</p>
                 </div>
               </div>
-
-              <div class="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  @click="handleFailJob(job.id)"
-                  class="py-2 bg-rose-950/40 hover:bg-rose-950/60 border border-rose-900/50 text-rose-400 text-[10px] rounded-lg transition-colors"
-                >
-                  Gagal / Kembalikan
-                </button>
-                <button
-                  @click="handleCompleteJob(job.id)"
-                  class="py-2 bg-emerald-600 hover:bg-emerald-700 text-slate-950 font-bold text-[10px] rounded-lg transition-colors"
-                >
-                  Selesaikan Antar
-                </button>
+              <div class="grid grid-cols-2 gap-2">
+                <button @click="handleFailJob(job.id)" class="btn-danger btn-sm w-full justify-center">Gagal</button>
+                <button @click="handleCompleteJob(job.id)" class="btn-primary btn-sm w-full justify-center">Selesai ✓</button>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        <!-- Driver Earnings History -->
-        <section class="bg-slate-950 border border-slate-800 p-6 rounded-2xl space-y-4">
-          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-3">
-            📋 Riwayat Pengiriman Selesai
-          </h3>
+        <!-- Completed earnings -->
+        <div class="card p-5 space-y-4">
+          <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">Riwayat Selesai</h3>
 
-          <div v-if="completedJobs.length === 0" class="text-center py-6 text-slate-650 text-xs">
-            Belum ada pengiriman yang diselesaikan.
-          </div>
+          <div v-if="completedJobs.length === 0" class="py-4 text-center text-sm text-[#9CA3AF]">Belum ada pengiriman selesai.</div>
 
-          <div v-else class="space-y-3 max-h-60 overflow-y-auto pr-2">
+          <div v-else class="space-y-2 max-h-56 overflow-y-auto">
             <div
               v-for="job in completedJobs"
               :key="job.id"
-              class="p-3 bg-slate-900/30 border border-slate-850 rounded-lg flex items-center justify-between text-xs"
+              class="flex items-center justify-between p-3 rounded-lg bg-[#F4F6F8] border border-[#E5E8EC] text-xs"
             >
               <div>
-                <p class="font-bold text-slate-300">{{ job.id }}</p>
-                <p class="text-[10px] text-slate-500 mt-0.5">Toko: {{ job.store_name }}</p>
+                <p class="font-medium text-[#0D1117]">{{ job.id }}</p>
+                <p class="text-[#9CA3AF] mt-0.5">{{ job.store_name }}</p>
               </div>
-              <div class="text-right">
-                <p class="font-bold text-emerald-400 font-mono">+Rp{{ (job.delivery_fee * 0.8).toLocaleString('id-ID') }}</p>
-                <p class="text-[9px] text-slate-650 mt-0.5">Komisi Masuk</p>
-              </div>
+              <span class="font-display font-semibold text-primary-600">+Rp{{ (job.delivery_fee * 0.8).toLocaleString('id-ID') }}</span>
             </div>
           </div>
-        </section>
+        </div>
       </div>
 
     </div>
-
   </div>
 </template>

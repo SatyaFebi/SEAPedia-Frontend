@@ -1,108 +1,135 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { apiRequest } from '../utils/api'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
-  const activeRole = ref(null)
-
-  // Mock users database
-  const mockUsers = [
-    {
-      id: 'usr-budi',
-      name: 'Budi Santoso',
-      username: 'budi',
-      roles: ['Buyer', 'Seller'],
-      store: {
-        id: 'str-budi',
-        name: 'Budi Lestari Jaya',
-      },
-      walletBalance: 1500000,
-      address: 'Jl. Pemuda No. 12, Jakarta Pusat',
-    },
-    {
-      id: 'usr-agus',
-      name: 'Agus Setiawan',
-      username: 'agus',
-      roles: ['Buyer', 'Seller', 'Driver'],
-      store: {
-        id: 'str-agus',
-        name: 'Agus Motor & Parts',
-      },
-      walletBalance: 2500000,
-      address: 'Jl. Merdeka No. 45, Bandung',
-    },
-    {
-      id: 'usr-siti',
-      name: 'Siti Rahma',
-      username: 'siti',
-      roles: ['Buyer', 'Driver'],
-      store: null,
-      walletBalance: 500000,
-      address: 'Jl. Sudirman No. 88, Surabaya',
-    },
-    {
-      id: 'usr-admin',
-      name: 'Super Admin',
-      username: 'admin',
-      roles: ['Admin'],
-      store: null,
-      walletBalance: 0,
-      address: 'HQ SEAPedia, Jakarta',
-    }
-  ]
+  const user = ref(JSON.parse(localStorage.getItem('user')) || null)
+  const activeRole = ref(localStorage.getItem('active_role') || null)
 
   const isLoggedIn = computed(() => user.value !== null)
-  
-  function login(username) {
-    const found = mockUsers.find(u => u.username.toLowerCase() === username.toLowerCase().trim())
-    if (found) {
-      user.value = { ...found }
-      // If user only has one role, set it automatically as active
-      if (found.roles.length === 1) {
-        activeRole.value = found.roles[0]
-      } else {
-        activeRole.value = null // Must select role first
+
+  // Initialize and check user profile from backend on app start
+  async function checkAuth() {
+    const token = localStorage.getItem('api_token')
+    if (!token) return
+
+    try {
+      const data = await apiRequest('/profile', { method: 'GET' })
+      user.value = data.user
+      localStorage.setItem('user', JSON.stringify(data.user))
+
+      // If active role is invalid or not in current list of roles, reset it
+      if (activeRole.value && !data.user.roles.includes(activeRole.value)) {
+        activeRole.value = null
+        localStorage.removeItem('active_role')
       }
-      return true
+
+      // Auto-select active role if user has exactly one role
+      if (!activeRole.value && data.user.roles.length === 1) {
+        setActiveRole(data.user.roles[0])
+      }
+    } catch (err) {
+      console.error('Failed to authenticate token:', err)
+      logout()
     }
-    return false
   }
 
-  function logout() {
-    user.value = null
-    activeRole.value = null
+  // Register function
+  async function register(userData) {
+    try {
+      const data = await apiRequest('/register', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+      })
+
+      localStorage.setItem('api_token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      user.value = data.user
+
+      if (data.user.roles.length === 1) {
+        setActiveRole(data.user.roles[0])
+      } else {
+        activeRole.value = null
+        localStorage.removeItem('active_role')
+      }
+
+      return { success: true }
+    } catch (err) {
+      return { success: false, message: err.message }
+    }
   }
 
+  // Login function
+  async function login(username, password) {
+    try {
+      const data = await apiRequest('/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+      })
+
+      localStorage.setItem('api_token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      user.value = data.user
+
+      if (data.user.roles.length === 1) {
+        setActiveRole(data.user.roles[0])
+      } else {
+        activeRole.value = null
+        localStorage.removeItem('active_role')
+      }
+
+      return { success: true }
+    } catch (err) {
+      return { success: false, message: err.message }
+    }
+  }
+
+  // Logout function
+  async function logout() {
+    try {
+      await apiRequest('/logout', { method: 'POST' })
+    } catch (err) {
+      // Swallowing errors on logout if token is already invalidated
+    } finally {
+      localStorage.removeItem('api_token')
+      localStorage.removeItem('user')
+      localStorage.removeItem('active_role')
+      user.value = null
+      activeRole.value = null
+    }
+  }
+
+  // Set active role session
   function setActiveRole(role) {
     if (user.value && user.value.roles.includes(role)) {
       activeRole.value = role
+      localStorage.setItem('active_role', role)
       return true
     }
     return false
   }
 
+  // Helper placeholder functions for balance adjustments in later levels
   function updateWalletBalance(amount) {
     if (user.value) {
       user.value.walletBalance = amount
-      // Update our local mockDB record too for consistency
-      const dbUser = mockUsers.find(u => u.id === user.value.id)
-      if (dbUser) dbUser.walletBalance = amount
+      localStorage.setItem('user', JSON.stringify(user.value))
     }
   }
 
   function updateAddress(newAddress) {
     if (user.value) {
       user.value.address = newAddress
-      const dbUser = mockUsers.find(u => u.id === user.value.id)
-      if (dbUser) dbUser.address = newAddress
+      localStorage.setItem('user', JSON.stringify(user.value))
     }
   }
 
   return {
     user,
     activeRole,
-    mockUsers,
     isLoggedIn,
+    checkAuth,
+    register,
     login,
     logout,
     setActiveRole,

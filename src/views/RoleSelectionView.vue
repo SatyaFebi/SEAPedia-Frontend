@@ -5,15 +5,12 @@ import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
-
 const user = computed(() => authStore.user)
 
-// Redirect if not logged in
 onMounted(() => {
   if (!authStore.isLoggedIn) {
     router.push({ name: 'login' })
   } else if (user.value.roles.length === 1) {
-    // If only one role, select automatically and bypass selection
     authStore.setActiveRole(user.value.roles[0])
     router.push({ name: `dashboard-${user.value.roles[0].toLowerCase()}` })
   }
@@ -25,71 +22,54 @@ function selectRole(role) {
   }
 }
 
-function getRoleDescription(role) {
-  if (role === 'Buyer') return 'Beli barang, isi saldo wallet, lacak pesanan, dan tulis review.'
-  if (role === 'Seller') return 'Kelola toko Anda, tambah produk, proses pesanan masuk, dan pantau omzet.'
-  if (role === 'Driver') return 'Cari pekerjaan pengiriman, antarkan pesanan, dan raih komisi.'
-  return ''
-}
-
-function getRoleIcon(role) {
-  if (role === 'Buyer') return '🛒'
-  if (role === 'Seller') return '🏪'
-  if (role === 'Driver') return '🛵'
-  return '👤'
-}
-
-function getRoleTheme(role) {
-  if (role === 'Buyer') return 'hover:border-amber-500 hover:shadow-amber-950/20 text-amber-400'
-  if (role === 'Seller') return 'hover:border-blue-500 hover:shadow-blue-950/20 text-blue-400'
-  if (role === 'Driver') return 'hover:border-emerald-500 hover:shadow-emerald-950/20 text-emerald-400'
-  return 'hover:border-slate-500 text-slate-400'
+const roleConfig = {
+  Buyer:  { icon: '🛒', desc: 'Beli barang, isi wallet, lacak pesanan.' },
+  Seller: { icon: '🏪', desc: 'Kelola toko, tambah produk, proses pesanan.' },
+  Driver: { icon: '🛵', desc: 'Ambil job pengiriman dan raih komisi.' },
 }
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 font-sans p-6">
-    <div v-if="user" class="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-      <!-- Decorative background blur -->
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-tr from-amber-500/5 to-rose-500/5 rounded-full blur-3xl"></div>
+  <div class="min-h-screen bg-[#FAFAFA] flex items-center justify-center p-6 font-sans">
+    <div v-if="user" class="w-full max-w-lg space-y-8">
 
       <!-- Header -->
-      <div class="text-center mb-8 relative z-10">
-        <span class="text-3xl font-extrabold font-display bg-gradient-to-r from-amber-500 via-coral-500 to-rose-500 bg-clip-text text-transparent">
-          SEAPedia
-        </span>
-        <h2 class="text-xl font-bold text-slate-200 mt-3">Pilih Peran Aktif Anda</h2>
-        <p class="text-slate-400 text-sm mt-1">Akun Anda memiliki beberapa peran. Pilih salah satu untuk memulai sesi.</p>
+      <div class="text-center space-y-1">
+        <div class="inline-flex items-center gap-2 mb-4">
+          <div class="w-7 h-7 rounded-lg bg-primary-600 flex items-center justify-center">
+            <span class="font-display font-bold text-white text-sm">S</span>
+          </div>
+          <span class="font-display font-bold text-[#0D1117] text-lg">SEAPedia</span>
+        </div>
+        <h1 class="font-display font-bold text-[#0D1117] text-2xl">Pilih Peran Aktif</h1>
+        <p class="text-[#6B7280] text-sm">Akun <strong class="text-[#374151]">{{ user.name }}</strong> memiliki beberapa peran. Pilih untuk memulai sesi.</p>
       </div>
 
-      <!-- Roles Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+      <!-- Role cards -->
+      <div class="grid grid-cols-1 gap-3">
         <button
           v-for="role in user.roles"
           :key="role"
           @click="selectRole(role)"
-          class="p-6 bg-slate-950 border border-slate-850 rounded-xl text-left transition-all hover:bg-slate-900/60 shadow-lg cursor-pointer group"
-          :class="getRoleTheme(role)"
+          class="group card-hover p-5 text-left flex items-center gap-5 transition-all cursor-pointer active:scale-[0.99]"
         >
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-3xl">{{ getRoleIcon(role) }}</span>
-            <span class="text-xs bg-slate-900 px-2.5 py-1 rounded-full text-slate-400 font-medium group-hover:text-slate-200 transition-colors">
-              Pilih →
-            </span>
+          <div class="w-12 h-12 rounded-xl bg-[#F4F6F8] flex items-center justify-center text-2xl shrink-0 group-hover:bg-primary-50 transition-colors">
+            {{ roleConfig[role]?.icon || '👤' }}
           </div>
-          <h3 class="text-lg font-bold text-slate-200 group-hover:text-inherit transition-colors">{{ role }}</h3>
-          <p class="text-slate-400 text-xs mt-2 leading-relaxed">
-            {{ getRoleDescription(role) }}
-          </p>
+          <div class="flex-1 min-w-0">
+            <p class="font-display font-semibold text-[#0D1117] text-base group-hover:text-primary-700 transition-colors">{{ role }}</p>
+            <p class="text-xs text-[#9CA3AF] mt-0.5 leading-relaxed">{{ roleConfig[role]?.desc || '' }}</p>
+          </div>
+          <span class="text-[#9CA3AF] group-hover:text-primary-600 transition-colors text-lg shrink-0">→</span>
         </button>
       </div>
 
-      <div class="text-center mt-8 relative z-10 pt-4 border-t border-slate-800/80">
+      <div class="text-center">
         <button
           @click="authStore.logout(); router.push('/login')"
-          class="text-xs text-slate-500 hover:text-slate-300"
+          class="text-xs text-[#9CA3AF] hover:text-[#374151] transition-colors cursor-pointer"
         >
-          Ganti Akun Lain
+          Ganti akun lain
         </button>
       </div>
     </div>

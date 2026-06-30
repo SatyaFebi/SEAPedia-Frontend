@@ -13,31 +13,21 @@ const router = useRouter()
 const user = computed(() => authStore.user)
 const orders = computed(() => ordersStore.getBuyerOrders(user.value?.id))
 
-// State for top-up
 const topUpAmount = ref(100000)
 const topUpSuccess = ref(false)
-
-// State for editing address
 const newAddress = ref(user.value?.address || '')
 const isEditingAddress = ref(false)
 const addressSuccess = ref(false)
-
-// State for voucher code input
 const voucherInput = ref('')
 const voucherAppliedMessage = ref('')
-
-// Checkout status
 const checkoutError = ref('')
 const checkoutSuccess = ref('')
 
 function handleTopUp() {
   if (topUpAmount.value <= 0) return
-  const currentBalance = user.value.walletBalance
-  authStore.updateWalletBalance(currentBalance + topUpAmount.value)
+  authStore.updateWalletBalance(user.value.walletBalance + topUpAmount.value)
   topUpSuccess.value = true
-  setTimeout(() => {
-    topUpSuccess.value = false
-  }, 3000)
+  setTimeout(() => { topUpSuccess.value = false }, 3000)
 }
 
 function handleSaveAddress() {
@@ -45,9 +35,7 @@ function handleSaveAddress() {
   authStore.updateAddress(newAddress.value)
   isEditingAddress.value = false
   addressSuccess.value = true
-  setTimeout(() => {
-    addressSuccess.value = false
-  }, 3000)
+  setTimeout(() => { addressSuccess.value = false }, 3000)
 }
 
 function handleApplyVoucher() {
@@ -67,398 +55,255 @@ function handleRemoveVoucher() {
 function handleCheckout() {
   checkoutError.value = ''
   checkoutSuccess.value = ''
-  
   const result = cartStore.submitCheckout()
   if (result.success) {
-    checkoutSuccess.value = `Checkout Berhasil! Pesanan Anda telah dibuat dengan ID ${result.orderId}.`
-    setTimeout(() => {
-      checkoutSuccess.value = ''
-    }, 8000)
+    checkoutSuccess.value = `Checkout berhasil! ID Pesanan: ${result.orderId}`
+    setTimeout(() => { checkoutSuccess.value = '' }, 8000)
   } else {
     checkoutError.value = result.error
   }
 }
 
-function getStatusBadgeClass(status) {
-  if (status === 'Sedang Dikemas') return 'bg-amber-950 text-amber-400 border border-amber-900/50'
-  if (status === 'Menunggu Pengirim') return 'bg-blue-950 text-blue-400 border border-blue-900/50'
-  if (status === 'Sedang Dikirim') return 'bg-indigo-950 text-indigo-400 border border-indigo-900/50'
-  if (status === 'Pesanan Selesai') return 'bg-emerald-950 text-emerald-400 border border-emerald-900/50'
-  if (status.includes('Dikembalikan')) return 'bg-rose-950 text-rose-400 border border-rose-900/50'
-  return 'bg-slate-800 text-slate-400 border border-slate-700'
+function getStatusBadge(status) {
+  if (status === 'Sedang Dikemas') return 'badge-amber'
+  if (status === 'Menunggu Pengirim') return 'badge-blue'
+  if (status === 'Sedang Dikirim') return 'badge badge-blue'
+  if (status === 'Pesanan Selesai') return 'badge-green'
+  if (status.includes('Dikembalikan')) return 'badge-rose'
+  return 'badge-gray'
 }
 
 function getTimelineStepClass(orderStatus, step) {
   const steps = ['Sedang Dikemas', 'Menunggu Pengirim', 'Sedang Dikirim', 'Pesanan Selesai']
   const orderIndex = steps.indexOf(orderStatus)
   const stepIndex = steps.indexOf(step)
-  
   if (orderStatus.includes('Dikembalikan')) {
-    if (stepIndex === 3) return 'bg-rose-900 text-rose-300 border-rose-700'
-    return 'bg-slate-800 text-slate-500 border-slate-700 opacity-50'
+    if (stepIndex === 3) return 'bg-accent-rose-50 border-accent-rose-200 text-accent-rose-600'
+    return 'bg-[#F4F6F8] border-[#E5E8EC] text-[#9CA3AF] opacity-50'
   }
-  
-  if (orderIndex >= stepIndex) {
-    return 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
-  }
-  
-  return 'bg-slate-850 text-slate-500 border-slate-800'
+  if (orderIndex >= stepIndex) return 'bg-primary-600 border-primary-500 text-white'
+  return 'bg-[#F4F6F8] border-[#E5E8EC] text-[#9CA3AF]'
 }
 </script>
 
 <template>
-  <div class="space-y-8 text-slate-200">
-    <!-- Header Summary -->
-    <div class="bg-gradient-to-r from-slate-905 to-slate-900 p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6">
-      <div>
-        <h2 class="text-xl font-bold text-slate-100">Selamat datang kembali, {{ user?.name }}!</h2>
-        <p class="text-slate-400 text-xs mt-1">Kelola saldo wallet, alamat pengiriman, belanjaan, dan lacak pesanan Anda di sini.</p>
-      </div>
-      <div class="flex items-center gap-4">
-        <!-- Address Widget -->
-        <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex-1 md:flex-none md:w-80">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Alamat Pengiriman</span>
-            <button @click="isEditingAddress = !isEditingAddress" class="text-xs text-amber-400 hover:text-amber-300">
+  <div class="space-y-6 text-[#374151]">
+
+    <!-- Header row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Welcome + Address -->
+      <div class="card p-5 md:col-span-2 space-y-1">
+        <h2 class="font-display font-bold text-[#0D1117] text-lg">Halo, {{ user?.name }}!</h2>
+        <p class="text-sm text-[#6B7280]">Kelola wallet, keranjang belanja, dan lacak pesanan Anda.</p>
+        <div class="mt-3 pt-3 border-t border-[#E5E8EC]">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="section-label">Alamat Pengiriman</span>
+            <button @click="isEditingAddress = !isEditingAddress" class="text-xs text-primary-600 hover:text-primary-700 cursor-pointer font-medium">
               {{ isEditingAddress ? 'Batal' : 'Ubah' }}
             </button>
           </div>
-          <div v-if="isEditingAddress" class="space-y-2">
-            <input
-              type="text"
-              v-model="newAddress"
-              class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded text-xs text-slate-200 focus:outline-none focus:border-amber-500"
-            />
-            <button @click="handleSaveAddress" class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded transition-colors">
-              Simpan
-            </button>
+          <div v-if="isEditingAddress" class="flex gap-2">
+            <input type="text" v-model="newAddress" class="input flex-1 text-sm" />
+            <button @click="handleSaveAddress" class="btn-primary btn-sm">Simpan</button>
           </div>
-          <p v-else class="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-            {{ user?.address }}
-          </p>
-          <p v-if="addressSuccess" class="text-emerald-500 text-[10px] mt-1 font-medium">Alamat berhasil diperbarui!</p>
+          <p v-else class="text-sm text-[#374151] leading-relaxed">{{ user?.address }}</p>
+          <p v-if="addressSuccess" class="text-primary-600 text-xs mt-1">Alamat berhasil diperbarui!</p>
+        </div>
+      </div>
+
+      <!-- Wallet + Top up -->
+      <div class="card p-5 space-y-4">
+        <div>
+          <p class="section-label">Saldo Wallet</p>
+          <p class="font-display font-bold text-[#0D1117] text-2xl mt-1">Rp{{ user?.walletBalance.toLocaleString('id-ID') }}</p>
+        </div>
+        <div class="space-y-2">
+          <input type="number" v-model.number="topUpAmount" class="input text-sm" min="10000" step="50000" />
+          <div class="flex gap-2">
+            <button @click="topUpAmount = 50000" class="btn-ghost btn-sm flex-1">50rb</button>
+            <button @click="topUpAmount = 250000" class="btn-ghost btn-sm flex-1">250rb</button>
+            <button @click="topUpAmount = 1000000" class="btn-ghost btn-sm flex-1">1jt</button>
+          </div>
+          <button @click="handleTopUp" class="btn-primary w-full justify-center">Top Up</button>
+          <p v-if="topUpSuccess" class="text-primary-600 text-xs text-center">Saldo berhasil ditambahkan!</p>
         </div>
       </div>
     </div>
 
-    <!-- Top Up Simulation -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl md:col-span-1">
-        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">💰 Simulasi Top Up Wallet</h3>
-        
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs text-slate-500 mb-2">Jumlah Top Up (Rp)</label>
-            <input
-              type="number"
-              v-model.number="topUpAmount"
-              class="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 text-sm font-semibold"
-              min="10000"
-              step="50000"
-            />
-          </div>
-          
-          <button
-            @click="handleTopUp"
-            class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-slate-950 font-bold rounded-xl transition-colors text-xs"
+    <!-- Cart + Checkout -->
+    <div class="card p-6 space-y-5">
+      <div class="flex items-center justify-between pb-4 border-b border-[#E5E8EC]">
+        <h3 class="font-display font-semibold text-[#0D1117]">Keranjang Belanja</h3>
+        <span v-if="cartStore.cartStoreName" class="badge badge-amber">{{ cartStore.cartStoreName }}</span>
+      </div>
+
+      <!-- Empty -->
+      <div v-if="cartStore.items.length === 0" class="py-10 text-center space-y-3">
+        <p class="text-sm text-[#9CA3AF]">Keranjang Anda kosong.</p>
+        <router-link to="/" class="btn-secondary btn-sm inline-flex">Cari Produk</router-link>
+      </div>
+
+      <!-- Items -->
+      <div v-else class="space-y-6">
+        <div class="space-y-3 max-h-64 overflow-y-auto">
+          <div
+            v-for="item in cartStore.items"
+            :key="item.product.id"
+            class="flex items-center gap-4 p-3 rounded-xl bg-[#F4F6F8] border border-[#E5E8EC]"
           >
-            Isi Saldo Wallet
-          </button>
-          
-          <div class="grid grid-cols-3 gap-2">
-            <button @click="topUpAmount = 50000" class="py-1 bg-slate-900 hover:bg-slate-850 rounded border border-slate-800 text-[10px]">50rb</button>
-            <button @click="topUpAmount = 250000" class="py-1 bg-slate-900 hover:bg-slate-850 rounded border border-slate-800 text-[10px]">250rb</button>
-            <button @click="topUpAmount = 1000000" class="py-1 bg-slate-900 hover:bg-slate-850 rounded border border-slate-800 text-[10px]">1jt</button>
-          </div>
-
-          <p v-if="topUpSuccess" class="text-emerald-500 text-xs text-center font-semibold">
-            Top Up Berhasil! Saldo telah ditambahkan.
-          </p>
-        </div>
-      </div>
-
-      <!-- Shopping Cart & Checkout (Locks to 1 store) -->
-      <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl md:col-span-2 space-y-6">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">🛒 Keranjang Belanja</h3>
-          <span v-if="cartStore.cartStoreName" class="text-xs bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full text-amber-400">
-            Toko Terkunci: <strong>{{ cartStore.cartStoreName }}</strong>
-          </span>
-        </div>
-
-        <!-- Empty Cart State -->
-        <div v-if="cartStore.items.length === 0" class="text-center py-10 space-y-3">
-          <p class="text-slate-500 text-sm">Keranjang belanja Anda kosong.</p>
-          <router-link to="/" class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs hover:border-slate-700 hover:text-slate-100 transition-colors">
-            Cari Produk di Katalog
-          </router-link>
-        </div>
-
-        <!-- Cart Items List -->
-        <div v-else class="space-y-6">
-          <div class="space-y-4 max-h-60 overflow-y-auto pr-2">
-            <div
-              v-for="item in cartStore.items"
-              :key="item.product.id"
-              class="flex items-center justify-between gap-4 p-3 bg-slate-900/50 rounded-xl border border-slate-850"
-            >
-              <div class="flex items-center gap-3">
-                <img :src="item.product.image" class="w-12 h-12 object-cover rounded-lg bg-slate-850" />
-                <div>
-                  <h4 class="text-xs font-semibold text-slate-200 line-clamp-1">{{ item.product.name }}</h4>
-                  <p class="text-xs text-slate-400 mt-1">Rp{{ item.product.price.toLocaleString('id-ID') }}</p>
-                </div>
+            <img :src="item.product.image" class="w-12 h-12 object-cover rounded-lg bg-[#E5E8EC] shrink-0" />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-[#0D1117] truncate">{{ item.product.name }}</p>
+              <p class="text-xs text-[#9CA3AF]">Rp{{ item.product.price.toLocaleString('id-ID') }}</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <div class="flex items-center bg-white border border-[#E5E8EC] rounded-lg overflow-hidden">
+                <button @click="cartStore.updateQuantity(item.product.id, item.quantity - 1)" class="px-2.5 py-1 text-[#6B7280] hover:text-[#0D1117] cursor-pointer text-sm">−</button>
+                <span class="px-2 text-xs font-semibold">{{ item.quantity }}</span>
+                <button @click="cartStore.updateQuantity(item.product.id, item.quantity + 1)" class="px-2.5 py-1 text-[#6B7280] hover:text-[#0D1117] cursor-pointer text-sm">+</button>
               </div>
-              
-              <div class="flex items-center gap-3">
-                <div class="flex items-center bg-slate-950 border border-slate-850 rounded-lg overflow-hidden">
-                  <button @click="cartStore.updateQuantity(item.product.id, item.quantity - 1)" class="px-2 py-1 text-slate-500 hover:text-slate-200">-</button>
-                  <span class="px-2 text-xs font-semibold">{{ item.quantity }}</span>
-                  <button @click="cartStore.updateQuantity(item.product.id, item.quantity + 1)" class="px-2 py-1 text-slate-500 hover:text-slate-200">+</button>
-                </div>
-                
-                <button @click="cartStore.removeFromCart(item.product.id)" class="text-xs text-rose-500 hover:text-rose-400">
-                  Hapus
-                </button>
+              <button @click="cartStore.removeFromCart(item.product.id)" class="text-xs text-accent-rose-500 hover:text-accent-rose-600 cursor-pointer">Hapus</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checkout config + breakdown -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-[#E5E8EC]">
+          <!-- Config -->
+          <div class="space-y-4">
+            <div>
+              <label class="input-label">Metode Pengiriman</label>
+              <select v-model="cartStore.selectedDelivery" class="input text-sm cursor-pointer">
+                <option value="Regular">Regular — Rp9.000 (SLA 2 hari)</option>
+                <option value="Next Day">Next Day — Rp15.000 (SLA 1 hari)</option>
+                <option value="Instant">Instant — Rp30.000 (SLA 1 hari)</option>
+              </select>
+            </div>
+            <div>
+              <label class="input-label">Kode Voucher</label>
+              <div class="flex gap-2">
+                <input type="text" v-model="voucherInput" placeholder="cth. SEAPEDIA10" class="input flex-1 uppercase text-sm" />
+                <button @click="handleApplyVoucher" class="btn-primary btn-sm">Pasang</button>
+              </div>
+              <p v-if="cartStore.discountError" class="text-accent-rose-500 text-xs mt-1">{{ cartStore.discountError }}</p>
+              <p v-if="voucherAppliedMessage" class="text-primary-600 text-xs mt-1">{{ voucherAppliedMessage }}</p>
+              <div v-if="cartStore.activeVoucher" class="mt-2 flex items-center justify-between px-3 py-2 bg-primary-50 border border-primary-100 rounded-lg">
+                <span class="text-xs text-primary-700 font-medium">🎟️ {{ cartStore.activeVoucher.code }} aktif</span>
+                <button @click="handleRemoveVoucher" class="text-xs text-accent-rose-500 hover:underline cursor-pointer">Hapus</button>
               </div>
             </div>
           </div>
 
-          <!-- Checkout Configuration & Breakdown -->
-          <div class="border-t border-slate-800 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Kurir & Voucher inputs -->
-            <div class="space-y-4">
-              <!-- Delivery method selection -->
-              <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Metode Pengiriman</label>
-                <select
-                  v-model="cartStore.selectedDelivery"
-                  class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-amber-500"
-                >
-                  <option value="Regular">Regular (Ongkir Rp9.000 - SLA 2 hari)</option>
-                  <option value="Next Day">Next Day (Ongkir Rp15.000 - SLA 1 hari)</option>
-                  <option value="Instant">Instant (Ongkir Rp30.000 - SLA 1 hari)</option>
-                </select>
+          <!-- Breakdown -->
+          <div class="bg-[#F4F6F8] rounded-xl border border-[#E5E8EC] p-4 space-y-3">
+            <p class="section-label border-b border-[#E5E8EC] pb-2">Rincian Pembayaran</p>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between text-[#6B7280]">
+                <span>Subtotal</span>
+                <span>Rp{{ cartStore.subtotal.toLocaleString('id-ID') }}</span>
               </div>
-
-              <!-- Promo Code -->
-              <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Kode Voucher / Diskon</label>
-                <div class="flex gap-2">
-                  <input
-                    type="text"
-                    v-model="voucherInput"
-                    placeholder="Contoh: SEAPEDIA10"
-                    class="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 uppercase focus:outline-none focus:border-amber-500"
-                  />
-                  <button
-                    @click="handleApplyVoucher"
-                    class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-colors"
-                  >
-                    Pasang
-                  </button>
-                </div>
-                <p v-if="cartStore.discountError" class="text-rose-500 text-[10px] mt-1">{{ cartStore.discountError }}</p>
-                <p v-if="voucherAppliedMessage" class="text-emerald-500 text-[10px] mt-1">{{ voucherAppliedMessage }}</p>
-                
-                <!-- Display Active Voucher Tag -->
-                <div v-if="cartStore.activeVoucher" class="mt-2 flex items-center justify-between p-2 bg-slate-900 border border-slate-850 rounded-lg">
-                  <div class="flex items-center gap-1.5 text-xs text-slate-300">
-                    <span class="text-amber-400">🎟️</span>
-                    <span><strong>{{ cartStore.activeVoucher.code }}</strong> aktif</span>
-                  </div>
-                  <button @click="handleRemoveVoucher" class="text-[10px] text-rose-500 hover:underline">Hapus</button>
-                </div>
+              <div v-if="cartStore.discountAmount > 0" class="flex justify-between text-accent-rose-600">
+                <span>Diskon Voucher</span>
+                <span>−Rp{{ cartStore.discountAmount.toLocaleString('id-ID') }}</span>
+              </div>
+              <div class="flex justify-between text-[#6B7280]">
+                <span>Ongkos Kirim</span>
+                <span :class="{ 'line-through text-[#9CA3AF]': cartStore.rawDeliveryFee !== cartStore.finalDeliveryFee }">
+                  Rp{{ cartStore.rawDeliveryFee.toLocaleString('id-ID') }}
+                </span>
+              </div>
+              <div v-if="cartStore.rawDeliveryFee !== cartStore.finalDeliveryFee" class="flex justify-between text-primary-600">
+                <span>Potongan Ongkir</span>
+                <span>Rp{{ cartStore.finalDeliveryFee.toLocaleString('id-ID') }}</span>
+              </div>
+              <div class="flex justify-between text-[#6B7280]">
+                <span>PPN 12%</span>
+                <span>Rp{{ cartStore.ppnAmount.toLocaleString('id-ID') }}</span>
+              </div>
+              <div class="divider"></div>
+              <div class="flex justify-between font-display font-bold text-[#0D1117]">
+                <span>Total Bayar</span>
+                <span class="text-primary-600">Rp{{ cartStore.total.toLocaleString('id-ID') }}</span>
               </div>
             </div>
-
-            <!-- Checkout Calculations Breakdown -->
-            <div class="bg-slate-900/30 border border-slate-850 p-4 rounded-xl space-y-3">
-              <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-850 pb-2">Rincian Pembayaran</h4>
-              
-              <div class="space-y-2 text-xs">
-                <div class="flex justify-between text-slate-400">
-                  <span>Subtotal Produk:</span>
-                  <span>Rp{{ cartStore.subtotal.toLocaleString('id-ID') }}</span>
-                </div>
-                
-                <div v-if="cartStore.discountAmount > 0" class="flex justify-between text-rose-400">
-                  <span>Diskon Voucher:</span>
-                  <span>-Rp{{ cartStore.discountAmount.toLocaleString('id-ID') }}</span>
-                </div>
-
-                <div class="flex justify-between text-slate-400">
-                  <span>Ongkos Kirim ({{ cartStore.selectedDelivery }}):</span>
-                  <span :class="{ 'line-through text-slate-600': cartStore.rawDeliveryFee !== cartStore.finalDeliveryFee }">
-                    Rp{{ cartStore.rawDeliveryFee.toLocaleString('id-ID') }}
-                  </span>
-                </div>
-
-                <div v-if="cartStore.rawDeliveryFee !== cartStore.finalDeliveryFee" class="flex justify-between text-emerald-400">
-                  <span>Potongan Ongkir:</span>
-                  <span>Rp{{ cartStore.finalDeliveryFee.toLocaleString('id-ID') }}</span>
-                </div>
-
-                <div class="flex justify-between text-slate-400">
-                  <span>PPN 12%:</span>
-                  <span>Rp{{ cartStore.ppnAmount.toLocaleString('id-ID') }}</span>
-                </div>
-
-                <div class="h-px bg-slate-800 my-2"></div>
-
-                <div class="flex justify-between text-sm font-bold text-slate-200">
-                  <span>Total Bayar:</span>
-                  <span class="text-amber-400">Rp{{ cartStore.total.toLocaleString('id-ID') }}</span>
-                </div>
-              </div>
-
-              <div class="pt-3">
-                <button
-                  @click="handleCheckout"
-                  class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-all"
-                >
-                  Bayar & Selesaikan Transaksi
-                </button>
-                <button
-                  @click="cartStore.clearCart"
-                  class="w-full mt-2 py-1.5 bg-slate-950 text-slate-500 hover:text-slate-300 text-[10px] rounded transition-colors"
-                >
-                  Kosongkan Keranjang
-                </button>
-              </div>
-
-              <p v-if="checkoutError" class="text-rose-500 text-xs mt-2 text-center font-medium">{{ checkoutError }}</p>
-              <p v-if="checkoutSuccess" class="text-emerald-500 text-xs mt-2 text-center font-medium">{{ checkoutSuccess }}</p>
+            <div class="space-y-2 pt-1">
+              <button @click="handleCheckout" class="btn-primary w-full justify-center">Bayar Sekarang</button>
+              <button @click="cartStore.clearCart" class="btn-ghost w-full justify-center text-xs text-[#9CA3AF]">Kosongkan Keranjang</button>
             </div>
+            <p v-if="checkoutError" class="text-accent-rose-500 text-xs text-center">{{ checkoutError }}</p>
+            <p v-if="checkoutSuccess" class="text-primary-600 text-xs text-center font-medium">{{ checkoutSuccess }}</p>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <!-- Order Timeline & History Section -->
-    <section class="bg-slate-950 border border-slate-800 p-6 rounded-2xl">
-      <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 pb-2 border-b border-slate-800">
-        📦 Pelacakan Timeline Order Anda
-      </h3>
+    <!-- Order tracking -->
+    <div class="card p-6 space-y-5">
+      <h3 class="font-display font-semibold text-[#0D1117] pb-4 border-b border-[#E5E8EC]">Lacak Pesanan</h3>
 
-      <div v-if="orders.length === 0" class="text-center py-8 text-slate-500 text-sm">
-        Belum ada riwayat pemesanan yang dibuat.
+      <div v-if="orders.length === 0" class="py-8 text-center text-sm text-[#9CA3AF]">
+        Belum ada pesanan. Mulai belanja dari katalog!
       </div>
 
-      <div v-else class="space-y-8">
+      <div v-else class="space-y-5">
         <div
           v-for="order in orders"
           :key="order.id"
-          class="border border-slate-850 bg-slate-900/20 rounded-xl p-5 space-y-4"
+          class="border border-[#E5E8EC] rounded-xl p-5 space-y-4 bg-[#FAFAFA]"
         >
-          <!-- Order Header details -->
-          <div class="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-850">
-            <div class="flex items-center gap-3">
-              <span class="text-xs font-bold text-slate-300 bg-slate-850 px-2.5 py-1 rounded">
-                {{ order.id }}
-              </span>
-              <span class="text-xs text-slate-400">
-                Toko: <strong>{{ order.store_name }}</strong>
-              </span>
-            </div>
+          <!-- Header -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#E5E8EC]">
             <div class="flex items-center gap-2">
-              <span class="text-xs text-slate-500">Dibuat: {{ order.created_at }}</span>
-              <span class="text-xs font-semibold px-2.5 py-0.5 rounded" :class="getStatusBadgeClass(order.status)">
-                {{ order.status }}
-              </span>
+              <code class="text-xs bg-[#E5E8EC] px-2 py-0.5 rounded font-mono text-[#374151]">{{ order.id }}</code>
+              <span class="text-xs text-[#6B7280]">{{ order.store_name }}</span>
             </div>
+            <span class="badge" :class="getStatusBadge(order.status)">{{ order.status }}</span>
           </div>
 
-          <!-- Items row -->
-          <div class="flex flex-col gap-2 max-h-32 overflow-y-auto">
-            <div v-for="item in order.items" :key="item.id" class="flex items-center justify-between text-xs text-slate-300">
+          <!-- Items -->
+          <div class="space-y-2">
+            <div v-for="item in order.items" :key="item.id" class="flex items-center justify-between text-xs text-[#374151]">
               <div class="flex items-center gap-2">
-                <img :src="item.image" class="w-8 h-8 object-cover rounded bg-slate-800" />
+                <img :src="item.image" class="w-7 h-7 object-cover rounded bg-[#E5E8EC]" />
                 <span>{{ item.name }} <strong>(x{{ item.quantity }})</strong></span>
               </div>
               <span>Rp{{ (item.price * item.quantity).toLocaleString('id-ID') }}</span>
             </div>
           </div>
 
-          <!-- Price & delivery method summary -->
-          <div class="flex justify-between items-center text-xs bg-slate-950 p-3 rounded-lg text-slate-400">
-            <div>
-              Pengiriman: <strong>{{ order.delivery_method }}</strong> 
-              <span v-if="order.driver_name"> (Kurir: {{ order.driver_name }})</span>
-            </div>
-            <div class="text-slate-200">
-              Total Pembayaran: <strong class="text-amber-400">Rp{{ order.total.toLocaleString('id-ID') }}</strong>
-            </div>
+          <!-- Summary -->
+          <div class="flex justify-between text-xs text-[#6B7280] px-3 py-2 bg-white border border-[#E5E8EC] rounded-lg">
+            <span>{{ order.delivery_method }}<span v-if="order.driver_name"> · {{ order.driver_name }}</span></span>
+            <strong class="text-primary-600">Rp{{ order.total.toLocaleString('id-ID') }}</strong>
           </div>
 
-          <!-- Visual Timeline Progress -->
+          <!-- Timeline -->
           <div>
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Timeline Pengiriman</p>
-            
+            <p class="section-label mb-2">Timeline Pengiriman</p>
             <div class="grid grid-cols-4 gap-2 relative">
-              <!-- Connector line -->
-              <div class="absolute top-4 left-4 right-4 h-0.5 bg-slate-800 -z-10"></div>
-              
-              <!-- Step 1: Sedang Dikemas -->
-              <div class="text-center">
-                <div
-                  class="w-8 h-8 rounded-full border-2 flex items-center justify-center mx-auto text-xs"
-                  :class="getTimelineStepClass(order.status, 'Sedang Dikemas')"
-                >
-                  📦
+              <div class="absolute top-3.5 left-6 right-6 h-0.5 bg-[#E5E8EC] -z-10"></div>
+              <div v-for="(step, label) in { 'Sedang Dikemas': '📦', 'Menunggu Pengirim': '🏪', 'Sedang Dikirim': '🛵', 'Pesanan Selesai': '🏁' }" :key="step" class="text-center">
+                <div class="w-7 h-7 rounded-full border-2 flex items-center justify-center mx-auto text-xs transition-colors" :class="getTimelineStepClass(order.status, step)">
+                  {{ label }}
                 </div>
-                <p class="text-[9px] text-slate-400 mt-1 font-semibold">Dikemas</p>
-              </div>
-
-              <!-- Step 2: Menunggu Pengirim -->
-              <div class="text-center">
-                <div
-                  class="w-8 h-8 rounded-full border-2 flex items-center justify-center mx-auto text-xs"
-                  :class="getTimelineStepClass(order.status, 'Menunggu Pengirim')"
-                >
-                  🏪
-                </div>
-                <p class="text-[9px] text-slate-400 mt-1 font-semibold">Siap Diambil</p>
-              </div>
-
-              <!-- Step 3: Sedang Dikirim -->
-              <div class="text-center">
-                <div
-                  class="w-8 h-8 rounded-full border-2 flex items-center justify-center mx-auto text-xs"
-                  :class="getTimelineStepClass(order.status, 'Sedang Dikirim')"
-                >
-                  🛵
-                </div>
-                <p class="text-[9px] text-slate-400 mt-1 font-semibold">Dalam Perjalanan</p>
-              </div>
-
-              <!-- Step 4: Pesanan Selesai / Dikembalikan -->
-              <div class="text-center">
-                <div
-                  class="w-8 h-8 rounded-full border-2 flex items-center justify-center mx-auto text-xs"
-                  :class="getTimelineStepClass(order.status, 'Pesanan Selesai')"
-                >
-                  🏁
-                </div>
-                <p class="text-[9px] text-slate-400 mt-1 font-semibold">
-                  {{ order.status.includes('Dikembalikan') ? 'Dikembalikan' : 'Selesai' }}
-                </p>
+                <p class="text-[9px] text-[#9CA3AF] mt-1">{{ step === 'Sedang Dikemas' ? 'Dikemas' : step === 'Menunggu Pengirim' ? 'Siap Ambil' : step === 'Sedang Dikirim' ? 'Dikirim' : order.status.includes('Dikembalikan') ? 'Dikembalikan' : 'Selesai' }}</p>
               </div>
             </div>
           </div>
 
-          <!-- Detailed Status History Logs -->
-          <div class="bg-slate-950/50 p-3 rounded-lg border border-slate-900/50">
-            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Riwayat Status Detail</p>
+          <!-- Status log -->
+          <div class="bg-white border border-[#E5E8EC] rounded-lg p-3">
+            <p class="section-label mb-2">Log Status</p>
             <ul class="space-y-1">
-              <li v-for="log in order.status_history" :key="log.status" class="text-[10px] text-slate-400 flex items-center justify-between">
-                <span>🟢 Status berubah menjadi <strong class="text-slate-300">{{ log.status }}</strong></span>
-                <span class="text-slate-500 font-mono">{{ log.timestamp }}</span>
+              <li v-for="log in order.status_history" :key="log.status" class="text-xs text-[#6B7280] flex items-center justify-between">
+                <span>→ <strong class="text-[#374151]">{{ log.status }}</strong></span>
+                <span class="text-[#9CA3AF] font-mono">{{ log.timestamp }}</span>
               </li>
             </ul>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+
   </div>
 </template>

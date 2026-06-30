@@ -7,7 +7,13 @@ import './style.css'
 
 const app = createApp(App)
 
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 
-app.mount('#app')
+// Check auth on startup
+import { useAuthStore } from './stores/auth'
+const authStore = useAuthStore(pinia)
+authStore.checkAuth().finally(() => {
+  app.mount('#app')
+})

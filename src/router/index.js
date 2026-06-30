@@ -24,6 +24,11 @@ const router = createRouter({
       component: LoginView
     },
     {
+      path: '/register',
+      name: 'register',
+      component: () => import('../views/RegisterView.vue')
+    },
+    {
       path: '/role-selection',
       name: 'role-selection',
       component: RoleSelectionView
@@ -92,9 +97,9 @@ router.beforeEach((to, from, next) => {
     }
   }
 
-  // If user is logged in and tries to access login or role selection when they already have active role
+  // If user is logged in and tries to access login/register or role selection when they already have active role
   if (authStore.isLoggedIn) {
-    if (to.name === 'login') {
+    if (to.name === 'login' || to.name === 'register') {
       if (authStore.activeRole) {
         return next({ name: `dashboard-${authStore.activeRole.toLowerCase()}` })
       } else {
