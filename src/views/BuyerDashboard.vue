@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 import { useOrdersStore } from '../stores/orders'
+import { apiRequest } from '../utils/api'
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
@@ -23,19 +24,42 @@ const voucherAppliedMessage = ref('')
 const checkoutError = ref('')
 const checkoutSuccess = ref('')
 
-function handleTopUp() {
-  if (topUpAmount.value <= 0) return
-  authStore.updateWalletBalance(user.value.walletBalance + topUpAmount.value)
-  topUpSuccess.value = true
-  setTimeout(() => { topUpSuccess.value = false }, 3000)
+const walletTransactions = ref([])
+
+async function fetchWalletData() {
+  try {
+    const data = await apiRequest('/wallet')
+    walletTransactions.value = data.transactions || []
+    if (authStore.user) {
+      authStore.user.walletBalance = data.balance
+    }
+  } catch (err) {
+    console.error('Gagal mengambil data wallet:', err)
+  }
 }
 
-function handleSaveAddress() {
+async function handleTopUp() {
+  if (topUpAmount.value <= 0) return
+  const res = await authStore.topUpWallet(topUpAmount.value)
+  if (res.success) {
+    topUpSuccess.value = true
+    await fetchWalletData()
+    setTimeout(() => { topUpSuccess.value = false }, 3000)
+  } else {
+    alert('Gagal top up: ' + res.message)
+  }
+}
+
+async function handleSaveAddress() {
   if (!newAddress.value.trim()) return
-  authStore.updateAddress(newAddress.value)
-  isEditingAddress.value = false
-  addressSuccess.value = true
-  setTimeout(() => { addressSuccess.value = false }, 3000)
+  const res = await authStore.updateAddress(newAddress.value)
+  if (res.success) {
+    isEditingAddress.value = false
+    addressSuccess.value = true
+    setTimeout(() => { addressSuccess.value = false }, 3000)
+  } else {
+    alert('Gagal mengubah alamat: ' + res.message)
+  }
 }
 
 function handleApplyVoucher() {
@@ -52,12 +76,14 @@ function handleRemoveVoucher() {
   voucherAppliedMessage.value = ''
 }
 
-function handleCheckout() {
+async function handleCheckout() {
   checkoutError.value = ''
   checkoutSuccess.value = ''
-  const result = cartStore.submitCheckout()
+  const result = await cartStore.submitCheckout()
   if (result.success) {
     checkoutSuccess.value = `Checkout berhasil! ID Pesanan: ${result.orderId}`
+    await ordersStore.fetchBuyerOrders()
+    await fetchWalletData()
     setTimeout(() => { checkoutSuccess.value = '' }, 8000)
   } else {
     checkoutError.value = result.error
@@ -84,6 +110,14 @@ function getTimelineStepClass(orderStatus, step) {
   if (orderIndex >= stepIndex) return 'bg-primary-600 border-primary-500 text-white'
   return 'bg-[#F4F6F8] border-[#E5E8EC] text-[#9CA3AF]'
 }
+
+onMounted(async () => {
+  await authStore.checkAuth()
+  await cartStore.fetchCart()
+  await ordersStore.fetchBuyerOrders()
+  await fetchWalletData()
+  newAddress.value = authStore.user?.address || ''
+})
 </script>
 
 <template>
@@ -115,7 +149,7 @@ function getTimelineStepClass(orderStatus, step) {
       <div class="card p-5 space-y-4">
         <div>
           <p class="section-label">Saldo Wallet</p>
-          <p class="font-display font-bold text-[#0D1117] text-2xl mt-1">Rp{{ user?.walletBalance.toLocaleString('id-ID') }}</p>
+          <p class="font-display font-bold text-[#0D1117] text-2xl mt-1">Rp{{ user?.walletBalance?.toLocaleString('id-ID') || '0' }}</p>
         </div>
         <div class="space-y-2">
           <input type="number" v-model.number="topUpAmount" class="input text-sm" min="10000" step="50000" />
@@ -126,6 +160,23 @@ function getTimelineStepClass(orderStatus, step) {
           </div>
           <button @click="handleTopUp" class="btn-primary w-full justify-center">Top Up</button>
           <p v-if="topUpSuccess" class="text-primary-600 text-xs text-center">Saldo berhasil ditambahkan!</p>
+        </div>
+
+        <!-- Wallet Top Up History / Transactions -->
+        <div class="mt-4 pt-3 border-t border-[#E5E8EC] space-y-2">
+          <p class="section-label text-xs">Riwayat Transaksi Wallet</p>
+          <div v-if="walletTransactions.length === 0" class="text-xs text-[#9CA3AF] text-center py-2">Belum ada riwayat transaksi.</div>
+          <div v-else class="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+            <div v-for="tx in walletTransactions" :key="tx.id" class="flex justify-between items-center text-xs p-2 rounded bg-[#F4F6F8] border border-[#E5E8EC]">
+              <div class="min-w-0 flex-1 pr-2">
+                <span class="font-semibold text-[11px]" :class="tx.amount > 0 ? 'text-primary-600' : 'text-accent-rose-600'">
+                  {{ tx.amount > 0 ? '+' : '' }}Rp{{ tx.amount.toLocaleString('id-ID') }}
+                </span>
+                <p class="text-[9px] text-[#9CA3AF] truncate" :title="tx.description">{{ tx.description }}</p>
+              </div>
+              <span class="text-[9px] font-mono text-[#9CA3AF] shrink-0">{{ tx.created_at }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

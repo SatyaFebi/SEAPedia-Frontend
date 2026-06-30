@@ -109,18 +109,37 @@ export const useAuthStore = defineStore('auth', () => {
     return false
   }
 
-  // Helper placeholder functions for balance adjustments in later levels
-  function updateWalletBalance(amount) {
-    if (user.value) {
-      user.value.walletBalance = amount
-      localStorage.setItem('user', JSON.stringify(user.value))
+  // Wallet top-up integration
+  async function topUpWallet(amount) {
+    try {
+      const data = await apiRequest('/wallet/topup', {
+        method: 'POST',
+        body: JSON.stringify({ amount })
+      })
+      if (user.value) {
+        user.value.walletBalance = data.balance
+        localStorage.setItem('user', JSON.stringify(user.value))
+      }
+      return { success: true, balance: data.balance }
+    } catch (err) {
+      return { success: false, message: err.message }
     }
   }
 
-  function updateAddress(newAddress) {
-    if (user.value) {
-      user.value.address = newAddress
-      localStorage.setItem('user', JSON.stringify(user.value))
+  // Address creation and selection integration
+  async function updateAddress(newAddress) {
+    try {
+      const data = await apiRequest('/addresses', {
+        method: 'POST',
+        body: JSON.stringify({ address_details: newAddress, is_main: true })
+      })
+      if (user.value) {
+        user.value.address = data.address.address_details
+        localStorage.setItem('user', JSON.stringify(user.value))
+      }
+      return { success: true }
+    } catch (err) {
+      return { success: false, message: err.message }
     }
   }
 
@@ -133,7 +152,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     setActiveRole,
-    updateWalletBalance,
+    topUpWallet,
     updateAddress
   }
 })

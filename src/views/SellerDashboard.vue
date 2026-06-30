@@ -1,18 +1,32 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useProductsStore } from '../stores/products'
 import { useOrdersStore } from '../stores/orders'
+import { apiRequest } from '../utils/api'
 
 const authStore = useAuthStore()
 const productsStore = useProductsStore()
 const ordersStore = useOrdersStore()
 
 const user = computed(() => authStore.user)
-const store = computed(() => user.value?.store || { id: '', name: 'Toko Saya' })
+const store = computed(() => user.value?.store || { id: '', name: '' })
 
-const storeNameInput = ref(store.value.name)
+const storeNameInput = ref('')
 const storeNameSuccess = ref(false)
+const storeNameError = ref('')
+
+// Watch for store changes to populate input
+watch(() => store.value, (newStore) => {
+  if (newStore) {
+    storeNameInput.value = newStore.name || ''
+  }
+}, { immediate: true })
+
+onMounted(async () => {
+  await productsStore.fetchProducts()
+  await ordersStore.fetchSellerOrders()
+})
 
 const sellerProducts = computed(() => productsStore.getProductsByStore(store.value.id))
 const storeOrders = computed(() => ordersStore.getSellerOrders(store.value.id))
@@ -22,46 +36,78 @@ const processedOrders = computed(() => storeOrders.value.filter(o => o.status !=
 const isAddModalOpen = ref(false)
 const isEditModalOpen = ref(false)
 const selectedProduct = ref(null)
-const productForm = ref({ name: '', price: 0, stock: 0, description: '', image: '' })
+const productForm = ref({ name: '', price: 0, stock: 0, description: '', image: '', category: 'Kuliner' })
 const crudSuccessMessage = ref('')
 
-function handleSaveStoreName() {
+async function handleSaveStoreName() {
   if (!storeNameInput.value.trim()) return
-  user.value.store = user.value.store || {}
-  user.value.store.name = storeNameInput.value
-  productsStore.products.forEach(p => { if (p.store_id === store.value.id) p.store_name = storeNameInput.value })
-  ordersStore.orders.forEach(o => { if (o.store_id === store.value.id) o.store_name = storeNameInput.value })
-  storeNameSuccess.value = true
-  setTimeout(() => { storeNameSuccess.value = false }, 3000)
+  storeNameError.value = ''
+  storeNameSuccess.value = false
+  try {
+    const data = await apiRequest('/store', {
+      method: 'POST',
+      body: JSON.stringify({ store_name: storeNameInput.value })
+    })
+    authStore.user.store = data.store
+    localStorage.setItem('user', JSON.stringify(authStore.user))
+    storeNameSuccess.value = true
+    setTimeout(() => { storeNameSuccess.value = false }, 3000)
+    await productsStore.fetchProducts()
+  } catch (err) {
+    storeNameError.value = err.message || 'Gagal menyimpan nama toko.'
+  }
 }
 
 function openAddModal() {
-  productForm.value = { name: '', price: 15000, stock: 10, description: '', image: '' }
+  productForm.value = { name: '', price: null, stock: null, description: '', image: '', category: 'Kuliner' }
   isAddModalOpen.value = true
 }
 
-function handleAddProduct() {
-  productsStore.addProduct(productForm.value, store.value)
-  isAddModalOpen.value = false
-  triggerAlert('Produk baru berhasil ditambahkan!')
+async function handleAddProduct() {
+  if (!store.value.id) {
+    alert('Silakan buat nama toko terlebih dahulu.')
+    return
+  }
+  const res = await productsStore.addProduct(productForm.value)
+  if (res.success) {
+    isAddModalOpen.value = false
+    triggerAlert('Produk baru berhasil ditambahkan!')
+  } else {
+    alert(res.message || 'Gagal menambahkan produk.')
+  }
 }
 
 function openEditModal(product) {
   selectedProduct.value = product
-  productForm.value = { name: product.name, price: product.price, stock: product.stock, description: product.description, image: product.image }
+  productForm.value = {
+    name: product.name,
+    price: product.price,
+    stock: product.stock,
+    description: product.description,
+    image: product.image,
+    category: product.category || 'Kuliner'
+  }
   isEditModalOpen.value = true
 }
 
-function handleEditProduct() {
-  productsStore.updateProduct(selectedProduct.value.id, productForm.value)
-  isEditModalOpen.value = false
-  triggerAlert('Produk berhasil diperbarui!')
+async function handleEditProduct() {
+  const res = await productsStore.updateProduct(selectedProduct.value.id, productForm.value)
+  if (res.success) {
+    isEditModalOpen.value = false
+    triggerAlert('Produk berhasil diperbarui!')
+  } else {
+    alert(res.message || 'Gagal memperbarui produk.')
+  }
 }
 
-function handleDeleteProduct(productId) {
+async function handleDeleteProduct(productId) {
   if (confirm('Hapus produk ini?')) {
-    productsStore.deleteProduct(productId)
-    triggerAlert('Produk berhasil dihapus!')
+    const res = await productsStore.deleteProduct(productId)
+    if (res.success) {
+      triggerAlert('Produk berhasil dihapus!')
+    } else {
+      alert(res.message || 'Gagal menghapus produk.')
+    }
   }
 }
 
@@ -70,9 +116,12 @@ function triggerAlert(msg) {
   setTimeout(() => { crudSuccessMessage.value = '' }, 4000)
 }
 
-function handleShipOrder(orderId) {
-  const success = ordersStore.transitionOrderStatus(orderId, 'Menunggu Pengirim')
-  if (success) triggerAlert('Pesanan berhasil disiapkan untuk kurir!')
+async function handleShipOrder(orderId) {
+  const success = await ordersStore.transitionOrderStatus(orderId, 'Menunggu Pengirim')
+  if (success) {
+    triggerAlert('Pesanan berhasil disiapkan untuk kurir!')
+    await ordersStore.fetchSellerOrders()
+  }
 }
 
 const totalRevenue = computed(() =>
@@ -114,7 +163,8 @@ const statusBadge = (status) => {
           <button @click="handleSaveStoreName" class="btn-primary btn-sm shrink-0">Simpan</button>
         </div>
         <p v-if="storeNameSuccess" class="text-primary-600 text-xs">Tersimpan!</p>
-        <p class="text-xs text-[#9CA3AF]">ID: {{ store.id }}</p>
+        <p v-if="storeNameError" class="text-accent-rose-500 text-xs">{{ storeNameError }}</p>
+        <p class="text-xs text-[#9CA3AF]">ID: {{ store.id || '-' }}</p>
       </div>
     </div>
 
@@ -251,6 +301,13 @@ const statusBadge = (status) => {
             </div>
           </div>
           <div>
+            <label class="input-label">Kategori</label>
+            <select v-model="productForm.category" class="input cursor-pointer">
+              <option value="Kuliner">Kuliner</option>
+              <option value="Otomotif">Otomotif</option>
+            </select>
+          </div>
+          <div>
             <label class="input-label">Deskripsi</label>
             <textarea v-model="productForm.description" rows="2" class="input"></textarea>
           </div>
@@ -287,6 +344,13 @@ const statusBadge = (status) => {
               <label class="input-label">Stok</label>
               <input type="number" v-model.number="productForm.stock" class="input" />
             </div>
+          </div>
+          <div>
+            <label class="input-label">Kategori</label>
+            <select v-model="productForm.category" class="input cursor-pointer">
+              <option value="Kuliner">Kuliner</option>
+              <option value="Otomotif">Otomotif</option>
+            </select>
           </div>
           <div>
             <label class="input-label">Deskripsi</label>

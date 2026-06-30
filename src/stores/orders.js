@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
+import { apiRequest } from '../utils/api'
 
 export const useOrdersStore = defineStore('orders', () => {
   const orders = ref([
@@ -43,7 +44,25 @@ export const useOrdersStore = defineStore('orders', () => {
 
   const simulatedDay = ref(1)
 
-  // Get orders by role
+  async function fetchBuyerOrders() {
+    try {
+      const data = await apiRequest('/orders/buyer')
+      orders.value = data
+    } catch (err) {
+      console.error('Gagal mengambil pesanan pembeli:', err)
+    }
+  }
+
+  async function fetchSellerOrders() {
+    try {
+      const data = await apiRequest('/orders/seller')
+      orders.value = data
+    } catch (err) {
+      console.error('Gagal mengambil pesanan penjual:', err)
+    }
+  }
+
+  // Get orders by role (working on top of synchronized local ref)
   function getBuyerOrders(buyerId) {
     return orders.value.filter(o => o.buyer_id === buyerId)
   }
@@ -60,72 +79,29 @@ export const useOrdersStore = defineStore('orders', () => {
     return orders.value.filter(o => o.driver_id === driverId)
   }
 
-  // Create new order
+  // Create new order (stub, actual checkout is backend-driven)
   function createOrder(orderData) {
-    const timestampStr = new Date().toLocaleString('id-ID')
-    const newOrder = {
-      id: `ORD-${Math.floor(100000 + Math.random() * 900000)}`,
-      buyer_id: orderData.buyer_id,
-      buyer_name: orderData.buyer_name,
-      buyer_address: orderData.buyer_address,
-      store_id: orderData.store_id,
-      store_name: orderData.store_name,
-      items: orderData.items,
-      delivery_method: orderData.delivery_method,
-      delivery_fee: orderData.delivery_fee,
-      discount: orderData.discount,
-      subtotal: orderData.subtotal,
-      ppn: orderData.ppn,
-      total: orderData.total,
-      status: 'Sedang Dikemas',
-      driver_id: null,
-      driver_name: null,
-      created_at: timestampStr,
-      days_in_current_status: 0,
-      status_history: [
-        { status: 'Sedang Dikemas', timestamp: timestampStr }
-      ]
-    }
-    orders.value.unshift(newOrder)
-    return newOrder
+    return orderData
   }
 
-  // Handle status updates (enforces transitions)
-  function transitionOrderStatus(orderId, newStatus, extra = {}) {
-    const order = orders.value.find(o => o.id === orderId)
-    if (!order) return false
-
-    const currentStatus = order.status
-    let isValid = false
-
-    // Enforce: Sedang Dikemas ➔ Menunggu Pengirim ➔ Sedang Dikirim ➔ Pesanan Selesai OR Dikembalikan
-    if (currentStatus === 'Sedang Dikemas' && newStatus === 'Menunggu Pengirim') {
-      isValid = true
-    } else if (currentStatus === 'Menunggu Pengirim' && newStatus === 'Sedang Dikirim') {
-      isValid = true
-      if (extra.driver_id) {
-        order.driver_id = extra.driver_id
-        order.driver_name = extra.driver_name
-      }
-    } else if (currentStatus === 'Sedang Dikirim' && (newStatus === 'Pesanan Selesai' || newStatus === 'Dikembalikan')) {
-      isValid = true
-    } else if (newStatus === 'Dikembalikan') {
-      // SLA auto-return/cancel can happen from Sedang Dikemas or Menunggu Pengirim
-      if (currentStatus === 'Sedang Dikemas' || currentStatus === 'Menunggu Pengirim') {
-        isValid = true
-      }
-    }
-
-    if (isValid) {
-      order.status = newStatus
-      order.days_in_current_status = 0 // reset age in status
-      order.status_history.push({
-        status: newStatus,
-        timestamp: new Date().toLocaleString('id-ID')
+  // Handle status updates via API
+  async function transitionOrderStatus(orderId, newStatus, extra = {}) {
+    try {
+      const data = await apiRequest(`/orders/${orderId}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status: newStatus })
       })
+      const idx = orders.value.findIndex(o => o.id === orderId)
+      if (idx !== -1) {
+        orders.value[idx] = data.order
+      } else {
+        orders.value.unshift(data.order)
+      }
       return true
+    } catch (err) {
+      console.error('Gagal memperbarui status pesanan:', err)
+      return false
     }
-    return false
   }
 
   // Admin operational trigger: Simulate Next Day
@@ -192,6 +168,8 @@ export const useOrdersStore = defineStore('orders', () => {
   return {
     orders,
     simulatedDay,
+    fetchBuyerOrders,
+    fetchSellerOrders,
     getBuyerOrders,
     getSellerOrders,
     availableJobs,

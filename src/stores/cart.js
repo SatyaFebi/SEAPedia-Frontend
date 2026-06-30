@@ -87,49 +87,61 @@ export const useCartStore = defineStore('cart', () => {
   })
 
   // Functions
-  function addToCart(product, qty = 1) {
-    // Check if item store matches the current locked store
-    if (cartStoreId.value && product.store_id !== cartStoreId.value) {
-      return { success: false, conflict: true, currentStore: cartStoreName.value }
-    }
-
-    const existing = items.value.find(item => item.product.id === product.id)
-    if (existing) {
-      if (existing.quantity + qty > product.stock) {
-        return { success: false, error: 'Stok tidak mencukupi' }
-      }
-      existing.quantity += qty
-    } else {
-      if (qty > product.stock) {
-        return { success: false, error: 'Stok tidak mencukupi' }
-      }
-      items.value.push({ product, quantity: qty })
-    }
-
-    return { success: true }
-  }
-
-  function removeFromCart(productId) {
-    items.value = items.value.filter(item => item.product.id !== productId)
-    if (items.value.length === 0) {
-      voucherCode.value = ''
-      discountError.value = ''
+  async function fetchCart() {
+    try {
+      const data = await apiRequest('/cart')
+      items.value = data.items || []
+    } catch (err) {
+      console.error('Gagal mengambil data keranjang dari backend:', err)
     }
   }
 
-  function updateQuantity(productId, qty) {
-    const item = items.value.find(item => item.product.id === productId)
-    if (item) {
-      if (qty <= 0) {
-        removeFromCart(productId)
-      } else if (qty > item.product.stock) {
-        return false // Exceeds stock
-      } else {
-        item.quantity = qty
+  // Functions
+  async function addToCart(product, qty = 1, force = false) {
+    try {
+      const data = await apiRequest('/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({
+          product_id: product.id,
+          quantity: qty,
+          force
+        })
+      })
+      await fetchCart()
+      return { success: true }
+    } catch (err) {
+      if (err.status === 409) {
+        return { success: false, conflict: true, currentStore: err.data.current_store }
       }
+      return { success: false, error: err.message || 'Gagal menambahkan produk.' }
+    }
+  }
+
+  async function removeFromCart(productId) {
+    const item = items.value.find(i => i.product.id === productId)
+    if (!item) return
+    try {
+      await apiRequest(`/cart/items/${item.id}`, { method: 'DELETE' })
+      await fetchCart()
+    } catch (err) {
+      console.error('Gagal menghapus produk dari keranjang:', err)
+    }
+  }
+
+  async function updateQuantity(productId, qty) {
+    const item = items.value.find(i => i.product.id === productId)
+    if (!item) return false
+    try {
+      await apiRequest(`/cart/items/${item.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ quantity: qty })
+      })
+      await fetchCart()
       return true
+    } catch (err) {
+      console.error('Gagal memperbarui jumlah produk:', err)
+      return false
     }
-    return false
   }
 
   function applyVoucher(code) {
@@ -154,17 +166,17 @@ export const useCartStore = defineStore('cart', () => {
     discountError.value = ''
   }
 
-  function clearCart() {
-    items.value = []
-    voucherCode.value = ''
-    discountError.value = ''
-    selectedDelivery.value = 'Regular'
+  async function clearCart() {
+    try {
+      await apiRequest('/cart', { method: 'DELETE' })
+      await fetchCart()
+    } catch (err) {
+      console.error('Gagal mengosongkan keranjang:', err)
+    }
   }
 
-  function submitCheckout() {
+  async function submitCheckout() {
     const authStore = useAuthStore()
-    const ordersStore = useOrdersStore()
-    const productsStore = useProductsStore()
 
     if (!authStore.isLoggedIn) {
       return { success: false, error: 'Anda harus login terlebih dahulu.' }
@@ -176,50 +188,29 @@ export const useCartStore = defineStore('cart', () => {
       return { success: false, error: 'Saldo wallet tidak mencukupi. Silakan lakukan Top Up.' }
     }
 
-    // Process checkout
-    // 1. Deduct wallet
-    const newBalance = authStore.user.walletBalance - total.value
-    authStore.updateWalletBalance(newBalance)
+    try {
+      const data = await apiRequest('/checkout', {
+        method: 'POST',
+        body: JSON.stringify({
+          delivery_method: selectedDelivery.value,
+          shipping_address: authStore.user.address || 'Belum ada alamat pengiriman',
+          voucher_code: voucherCode.value || null
+        })
+      })
 
-    // 2. Reduce stock for each product in store
-    items.value.forEach(item => {
-      const prod = productsStore.products.find(p => p.id === item.product.id)
-      if (prod) {
-        prod.stock = Math.max(0, prod.stock - item.quantity)
-      }
-    })
+      // Reset local cart variables
+      items.value = []
+      voucherCode.value = ''
+      discountError.value = ''
+      selectedDelivery.value = 'Regular'
 
-    // 3. Create order
-    const discountObj = activeVoucher.value ? {
-      code: activeVoucher.value.code,
-      amount: discountAmount.value
-    } : null
+      // Refresh auth profile (to sync dynamic wallet balance and address)
+      await authStore.checkAuth()
 
-    const order = ordersStore.createOrder({
-      buyer_id: authStore.user.id,
-      buyer_name: authStore.user.name,
-      buyer_address: authStore.user.address,
-      store_id: cartStoreId.value,
-      store_name: cartStoreName.value,
-      items: items.value.map(item => ({
-        id: item.product.id,
-        name: item.product.name,
-        price: item.product.price,
-        quantity: item.quantity,
-        image: item.product.image
-      })),
-      delivery_method: selectedDelivery.value,
-      delivery_fee: finalDeliveryFee.value,
-      discount: discountObj,
-      subtotal: subtotal.value,
-      ppn: ppnAmount.value,
-      total: total.value
-    })
-
-    // 4. Clear cart
-    clearCart()
-
-    return { success: true, orderId: order.id }
+      return { success: true, orderId: data.order.id }
+    } catch (err) {
+      return { success: false, error: err.message || 'Gagal memproses checkout.' }
+    }
   }
 
   return {
@@ -237,6 +228,7 @@ export const useCartStore = defineStore('cart', () => {
     finalDeliveryFee,
     ppnAmount,
     total,
+    fetchCart,
     addToCart,
     removeFromCart,
     updateQuantity,

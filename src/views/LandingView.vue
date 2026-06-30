@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useProductsStore } from '../stores/products'
@@ -22,9 +22,7 @@ const filteredProducts = computed(() => {
     const matchesSearch = p.name.toLowerCase().includes(searchInput.value.toLowerCase()) ||
                           p.store_name.toLowerCase().includes(searchInput.value.toLowerCase())
     if (selectedCategory.value === 'Semua') return matchesSearch
-    else if (selectedCategory.value === 'Kuliner') return matchesSearch && p.id.startsWith('prod-') && parseInt(p.id.split('-')[1]) <= 3
-    else if (selectedCategory.value === 'Otomotif') return matchesSearch && p.id.startsWith('prod-') && parseInt(p.id.split('-')[1]) > 3
-    return matchesSearch
+    return matchesSearch && p.category === selectedCategory.value
   })
 })
 
@@ -38,13 +36,30 @@ const pendingProduct = ref(null)
 const reviewForm = ref({ name: '', comment: '', rating: 5 })
 const reviewSuccess = ref(false)
 
+onMounted(async () => {
+  await productsStore.fetchProducts()
+  if (authStore.isLoggedIn && authStore.activeRole === 'Buyer') {
+    await cartStore.fetchCart()
+  }
+})
+
+function filterByStore(storeName) {
+  searchInput.value = storeName
+  selectedCategory.value = 'Semua'
+  isDetailModalOpen.value = false
+  const catalogEl = document.getElementById('catalog')
+  if (catalogEl) {
+    catalogEl.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
 function openDetailModal(product) {
   activeDetailProduct.value = product
   qtyToAdd.value = 1
   isDetailModalOpen.value = true
 }
 
-function handleAddToCart() {
+async function handleAddToCart() {
   if (!authStore.isLoggedIn) {
     alert('Anda harus login terlebih dahulu sebagai Buyer.')
     router.push({ name: 'login' })
@@ -54,7 +69,7 @@ function handleAddToCart() {
     alert('Anda harus memilih peran aktif sebagai Buyer untuk menambah produk ke keranjang.')
     return
   }
-  const result = cartStore.addToCart(activeDetailProduct.value, qtyToAdd.value)
+  const result = await cartStore.addToCart(activeDetailProduct.value, qtyToAdd.value)
   if (result.success) {
     isDetailModalOpen.value = false
     alert('Produk berhasil ditambahkan ke keranjang belanja!')
@@ -67,9 +82,9 @@ function handleAddToCart() {
   }
 }
 
-function handleForceClearCartAndAdd() {
-  cartStore.clearCart()
-  const result = cartStore.addToCart(pendingProduct.value, qtyToAdd.value)
+async function handleForceClearCartAndAdd() {
+  await cartStore.clearCart()
+  const result = await cartStore.addToCart(pendingProduct.value, qtyToAdd.value)
   isConflictOpen.value = false
   isDetailModalOpen.value = false
   if (result.success) {
@@ -289,6 +304,20 @@ const categories = ['Semua', 'Kuliner', 'Otomotif']
             </div>
 
             <p class="text-sm text-[#6B7280] leading-relaxed flex-1">{{ activeDetailProduct.description || 'Tidak ada deskripsi.' }}</p>
+
+            <!-- Store Information Block -->
+            <div class="flex items-center gap-3 bg-[#F4F6F8] p-3 rounded-xl border border-[#E5E8EC]">
+              <div class="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center font-bold text-primary-700 text-sm shrink-0">
+                {{ activeDetailProduct.store_name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-semibold text-[#0D1117] truncate">{{ activeDetailProduct.store_name }}</p>
+                <p class="text-[10px] text-[#9CA3AF]">Penjual Terverifikasi SEAPedia</p>
+              </div>
+              <button @click="filterByStore(activeDetailProduct.store_name)" class="btn bg-white hover:bg-[#F4F6F8] text-[#374151] border border-[#E5E8EC] rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer shrink-0">
+                Kunjungi Toko
+              </button>
+            </div>
 
             <div class="space-y-3 border-t border-[#E5E8EC] pt-4">
               <div class="flex justify-between text-sm">
