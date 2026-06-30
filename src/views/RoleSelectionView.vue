@@ -79,10 +79,7 @@ const roleConfig = {
 
       <div class="text-center">
         <button
-          @click="
-            authStore.logout()
-            router.push('/login')
-          "
+          @click="authStore.logout(); router.push('/login')"
           class="text-xs text-[#9CA3AF] hover:text-[#374151] transition-colors cursor-pointer"
         >
           Ganti akun lain
