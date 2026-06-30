@@ -104,6 +104,22 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
+  async function processOrder(orderId) {
+    try {
+      const data = await apiRequest(`/orders/${orderId}/process`, {
+        method: 'POST'
+      })
+      const idx = orders.value.findIndex(o => o.id === orderId)
+      if (idx !== -1) {
+        orders.value[idx] = data.order
+      }
+      return true
+    } catch (err) {
+      console.error('Gagal memproses pesanan:', err)
+      return false
+    }
+  }
+
   // Admin operational trigger: Simulate Next Day
   function simulateNextDay() {
     simulatedDay.value++
@@ -176,6 +192,7 @@ export const useOrdersStore = defineStore('orders', () => {
     getDriverJobs,
     createOrder,
     transitionOrderStatus,
+    processOrder,
     simulateNextDay,
     getDriverEarnings
   }

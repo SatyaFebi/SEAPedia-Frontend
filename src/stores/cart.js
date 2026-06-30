@@ -9,13 +9,7 @@ export const useCartStore = defineStore('cart', () => {
   const selectedDelivery = ref('Regular')
   const voucherCode = ref('')
   const discountError = ref('')
-  
-  // Available Vouchers
-  const mockVouchers = [
-    { code: 'SEAPEDIA10', type: 'percentage', value: 0.10, minPurchase: 50000, maxDiscount: 50000, description: 'Diskon 10% minimal pembelian Rp50.000 (Maks Rp50.000)' },
-    { code: 'HEMAT25', type: 'percentage', value: 0.25, minPurchase: 100000, maxDiscount: 30000, description: 'Diskon 25% minimal pembelian Rp100.000 (Maks Rp30.000)' },
-    { code: 'GRATISONGKIR', type: 'delivery', value: 15000, minPurchase: 75000, description: 'Potongan Ongkir Rp15.000 minimal pembelian Rp75.000' }
-  ]
+  const activeDiscount = ref(null)
 
   // Locked store id
   const cartStoreId = computed(() => {
@@ -41,23 +35,18 @@ export const useCartStore = defineStore('cart', () => {
   })
 
   const activeVoucher = computed(() => {
-    if (!voucherCode.value) return null
-    return mockVouchers.find(v => v.code.toUpperCase() === voucherCode.value.toUpperCase())
+    return activeDiscount.value
   })
 
   const discountAmount = computed(() => {
-    const voucher = activeVoucher.value
-    if (!voucher) return 0
-    if (subtotal.value < voucher.minPurchase) return 0
-
-    if (voucher.type === 'percentage') {
-      const calc = subtotal.value * voucher.value
-      return Math.min(calc, voucher.maxDiscount)
-    } else if (voucher.type === 'delivery') {
-      // Delivery fee discount cannot exceed actual delivery fee
-      return Math.min(voucher.value, rawDeliveryFee.value)
+    if (!activeDiscount.value) return 0
+    // Recalculate discount based on current subtotal
+    if (activeDiscount.value.amount_type === 'PERCENTAGE') {
+      const calc = subtotal.value * (parseFloat(activeDiscount.value.value) / 100)
+      return Math.min(calc, subtotal.value)
+    } else {
+      return Math.min(parseFloat(activeDiscount.value.value), subtotal.value)
     }
-    return 0
   })
 
   const rawDeliveryFee = computed(() => {
@@ -66,24 +55,17 @@ export const useCartStore = defineStore('cart', () => {
   })
 
   const finalDeliveryFee = computed(() => {
-    const voucher = activeVoucher.value
-    const fee = rawDeliveryFee.value
-    if (voucher && voucher.type === 'delivery' && subtotal.value >= voucher.minPurchase) {
-      return Math.max(0, fee - voucher.value)
-    }
-    return fee
+    return rawDeliveryFee.value
   })
 
   const ppnRate = 0.12 // PPN 12%
   const ppnAmount = computed(() => {
-    // PPN is calculated on the subtotal + delivery - discount (if subtotal - discount is positive)
-    const base = Math.max(0, subtotal.value - (activeVoucher.value?.type === 'percentage' ? discountAmount.value : 0)) + finalDeliveryFee.value
+    const base = Math.max(0, subtotal.value - discountAmount.value)
     return Math.round(base * ppnRate)
   })
 
   const total = computed(() => {
-    const discount = activeVoucher.value?.type === 'percentage' ? discountAmount.value : 0
-    return Math.max(0, subtotal.value - discount) + finalDeliveryFee.value + ppnAmount.value
+    return Math.max(0, subtotal.value - discountAmount.value) + finalDeliveryFee.value + ppnAmount.value
   })
 
   // Functions
@@ -144,26 +126,31 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  function applyVoucher(code) {
+  async function applyVoucher(code) {
     discountError.value = ''
-    const voucher = mockVouchers.find(v => v.code.toUpperCase() === code.toUpperCase().trim())
-    
-    if (!voucher) {
-      discountError.value = 'Kode voucher tidak valid.'
+    try {
+      const data = await apiRequest('/discounts/validate', {
+        method: 'POST',
+        body: JSON.stringify({
+          code: code,
+          subtotal: subtotal.value
+        })
+      })
+      activeDiscount.value = data
+      voucherCode.value = data.code
+      return true
+    } catch (err) {
+      discountError.value = err.message || 'Kode diskon tidak valid.'
+      activeDiscount.value = null
+      voucherCode.value = ''
       return false
     }
-    if (subtotal.value < voucher.minPurchase) {
-      discountError.value = `Minimal pembelian Rp${voucher.minPurchase.toLocaleString('id-ID')} untuk voucher ini.`
-      return false
-    }
-    
-    voucherCode.value = voucher.code
-    return true
   }
 
   function removeVoucher() {
     voucherCode.value = ''
     discountError.value = ''
+    activeDiscount.value = null
   }
 
   async function clearCart() {
@@ -194,7 +181,7 @@ export const useCartStore = defineStore('cart', () => {
         body: JSON.stringify({
           delivery_method: selectedDelivery.value,
           shipping_address: authStore.user.address || 'Belum ada alamat pengiriman',
-          voucher_code: voucherCode.value || null
+          discount_code: voucherCode.value || null
         })
       })
 
@@ -202,6 +189,7 @@ export const useCartStore = defineStore('cart', () => {
       items.value = []
       voucherCode.value = ''
       discountError.value = ''
+      activeDiscount.value = null
       selectedDelivery.value = 'Regular'
 
       // Refresh auth profile (to sync dynamic wallet balance and address)
@@ -218,7 +206,7 @@ export const useCartStore = defineStore('cart', () => {
     selectedDelivery,
     voucherCode,
     discountError,
-    mockVouchers,
+    activeDiscount,
     cartStoreId,
     cartStoreName,
     subtotal,

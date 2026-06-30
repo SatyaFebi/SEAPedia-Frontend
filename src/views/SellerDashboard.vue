@@ -33,6 +33,27 @@ const storeOrders = computed(() => ordersStore.getSellerOrders(store.value.id))
 const incomingOrders = computed(() => storeOrders.value.filter(o => o.status === 'Sedang Dikemas'))
 const processedOrders = computed(() => storeOrders.value.filter(o => o.status !== 'Sedang Dikemas'))
 
+const activeTab = ref('dashboard')
+const reportData = ref({
+  summary: { total_income: 0, total_orders: 0, processed_orders: 0, incoming_orders: 0 },
+  orders: []
+})
+
+async function fetchReportData() {
+  try {
+    const data = await apiRequest('/reports/seller')
+    reportData.value = data
+  } catch (err) {
+    console.error('Gagal mengambil laporan penjualan:', err)
+  }
+}
+
+watch(activeTab, (newTab) => {
+  if (newTab === 'report') {
+    fetchReportData()
+  }
+})
+
 const isAddModalOpen = ref(false)
 const isEditModalOpen = ref(false)
 const selectedProduct = ref(null)
@@ -117,7 +138,7 @@ function triggerAlert(msg) {
 }
 
 async function handleShipOrder(orderId) {
-  const success = await ordersStore.transitionOrderStatus(orderId, 'Menunggu Pengirim')
+  const success = await ordersStore.processOrder(orderId)
   if (success) {
     triggerAlert('Pesanan berhasil disiapkan untuk kurir!')
     await ordersStore.fetchSellerOrders()
@@ -140,6 +161,23 @@ const statusBadge = (status) => {
 
 <template>
   <div class="space-y-6 text-[#374151]">
+
+    <!-- Tab Navigation -->
+    <div class="flex gap-2 border-b border-[#E5E8EC] pb-0">
+      <button
+        @click="activeTab = 'dashboard'"
+        :class="activeTab === 'dashboard' ? 'border-b-2 border-primary-600 text-primary-600 font-semibold' : 'text-[#6B7280] hover:text-[#374151]'"
+        class="px-4 py-2.5 text-sm transition-colors cursor-pointer"
+      >🏪 Dashboard Toko</button>
+      <button
+        @click="activeTab = 'report'"
+        :class="activeTab === 'report' ? 'border-b-2 border-primary-600 text-primary-600 font-semibold' : 'text-[#6B7280] hover:text-[#374151]'"
+        class="px-4 py-2.5 text-sm transition-colors cursor-pointer"
+      >📊 Laporan Penjualan</button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div v-show="activeTab === 'dashboard'">
 
     <!-- Stats row -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -246,9 +284,45 @@ const statusBadge = (status) => {
                   <span>Rp{{ (item.price * item.quantity).toLocaleString('id-ID') }}</span>
                 </div>
               </div>
+              
+              <!-- Pricing Breakdown -->
+              <div class="bg-white border border-[#E5E8EC] rounded-lg p-2.5 space-y-1 text-[11px] text-[#6B7280]">
+                <div class="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>Rp{{ order.subtotal.toLocaleString('id-ID') }}</span>
+                </div>
+                <div v-if="order.discount_amount > 0" class="flex justify-between text-accent-rose-600">
+                  <span>Diskon ({{ order.discount_type === 'VOUCHER' ? 'Voucher' : 'Promo' }}: {{ order.discount_code }})</span>
+                  <span>-Rp{{ order.discount_amount.toLocaleString('id-ID') }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Ongkos Kirim</span>
+                  <span>Rp{{ order.delivery_fee.toLocaleString('id-ID') }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>PPN 12%</span>
+                  <span>Rp{{ order.tax_amount.toLocaleString('id-ID') }}</span>
+                </div>
+                <div class="border-t border-[#E5E8EC] pt-1 flex justify-between font-bold text-[#0D1117] text-xs">
+                  <span>Total</span>
+                  <span class="text-primary-600">Rp{{ order.total.toLocaleString('id-ID') }}</span>
+                </div>
+              </div>
+
+              <!-- Status log -->
+              <div class="bg-white border border-[#E5E8EC] rounded-lg p-2 text-[10px]">
+                <p class="font-semibold text-[#0D1117] mb-1">Timeline Status</p>
+                <ul class="space-y-0.5 text-[#6B7280]">
+                  <li v-for="log in order.status_history" :key="log.status" class="flex justify-between">
+                    <span>→ {{ log.status }}</span>
+                    <span class="font-mono text-[#9CA3AF]">{{ log.timestamp }}</span>
+                  </li>
+                </ul>
+              </div>
+
               <div class="flex items-center justify-between pt-2 border-t border-[#E5E8EC]">
-                <span class="text-xs text-[#6B7280]">{{ order.buyer_name }}</span>
-                <button @click="handleShipOrder(order.id)" class="btn-primary btn-sm">Siap Kirim →</button>
+                <span class="text-xs text-[#6B7280]">Pembeli: {{ order.buyer_name }}</span>
+                <button @click="handleShipOrder(order.id)" class="btn-primary btn-sm">Proses Pesanan →</button>
               </div>
             </div>
           </div>
@@ -260,23 +334,133 @@ const statusBadge = (status) => {
 
           <div v-if="processedOrders.length === 0" class="py-4 text-center text-sm text-[#9CA3AF]">Belum ada riwayat.</div>
 
-          <div v-else class="space-y-2 max-h-60 overflow-y-auto">
+          <div v-else class="space-y-3 max-h-96 overflow-y-auto pr-1">
             <div
               v-for="order in processedOrders"
               :key="order.id"
-              class="flex items-center justify-between p-3 rounded-lg bg-[#F4F6F8] border border-[#E5E8EC] text-xs"
+              class="border border-[#E5E8EC] rounded-xl p-3 space-y-2 bg-[#FAFAFA] text-xs"
             >
-              <div>
-                <p class="font-medium text-[#0D1117]">{{ order.id }}</p>
-                <p class="text-[#9CA3AF] mt-0.5">Rp{{ order.total.toLocaleString('id-ID') }}</p>
+              <div class="flex items-center justify-between">
+                <code class="bg-[#E5E8EC] px-2 py-0.5 rounded font-mono text-[#374151]">{{ order.id }}</code>
+                <span class="badge" :class="statusBadge(order.status)">{{ order.status }}</span>
               </div>
-              <span class="badge" :class="statusBadge(order.status)">{{ order.status }}</span>
+              
+              <div class="space-y-1 text-[#374151]">
+                <div v-for="item in order.items" :key="item.id" class="flex justify-between">
+                  <span>{{ item.name }} (x{{ item.quantity }})</span>
+                  <span>Rp{{ (item.price * item.quantity).toLocaleString('id-ID') }}</span>
+                </div>
+              </div>
+
+              <!-- Pricing Breakdown -->
+              <div class="bg-white border border-[#E5E8EC] rounded-lg p-2 space-y-1 text-[10px] text-[#6B7280]">
+                <div class="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>Rp{{ order.subtotal.toLocaleString('id-ID') }}</span>
+                </div>
+                <div v-if="order.discount_amount > 0" class="flex justify-between text-accent-rose-600">
+                  <span>Diskon ({{ order.discount_type === 'VOUCHER' ? 'Voucher' : 'Promo' }}: {{ order.discount_code }})</span>
+                  <span>-Rp{{ order.discount_amount.toLocaleString('id-ID') }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Ongkir</span>
+                  <span>Rp{{ order.delivery_fee.toLocaleString('id-ID') }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>PPN 12%</span>
+                  <span>Rp{{ order.tax_amount.toLocaleString('id-ID') }}</span>
+                </div>
+                <div class="border-t border-[#E5E8EC] pt-1 flex justify-between font-bold text-[#0D1117] text-xs">
+                  <span>Total</span>
+                  <span class="text-primary-600">Rp{{ order.total.toLocaleString('id-ID') }}</span>
+                </div>
+              </div>
+
+              <!-- Status log -->
+              <div class="bg-white border border-[#E5E8EC] rounded-lg p-2 text-[10px]">
+                <p class="font-semibold text-[#0D1117] mb-1">Timeline Status</p>
+                <ul class="space-y-0.5 text-[#6B7280]">
+                  <li v-for="log in order.status_history" :key="log.status" class="flex justify-between">
+                    <span>→ {{ log.status }}</span>
+                    <span class="font-mono text-[#9CA3AF]">{{ log.timestamp }}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
     </div>
+
+    </div><!-- end dashboard tab -->
+
+    <!-- Report Tab -->
+    <div v-show="activeTab === 'report'" class="space-y-6">
+
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-card">
+          <p class="stat-label">Total Pendapatan</p>
+          <p class="stat-value text-primary-600">Rp{{ (reportData.summary.total_income || 0).toLocaleString('id-ID') }}</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Total Pesanan</p>
+          <p class="stat-value">{{ reportData.summary.total_orders || 0 }}</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Pesanan Selesai</p>
+          <p class="stat-value text-primary-600">{{ reportData.summary.processed_orders || 0 }}</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Pesanan Masuk</p>
+          <p class="stat-value text-accent-amber-600">{{ reportData.summary.incoming_orders || 0 }}</p>
+        </div>
+      </div>
+
+      <!-- Orders Table -->
+      <div class="card p-6 space-y-4">
+        <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">Riwayat Transaksi</h3>
+
+        <div v-if="!reportData.orders || reportData.orders.length === 0" class="py-10 text-center text-sm text-[#9CA3AF]">
+          Belum ada data penjualan.
+        </div>
+
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm border-collapse">
+            <thead>
+              <tr class="border-b border-[#E5E8EC]">
+                <th class="text-left py-2 px-3 section-label">Order ID</th>
+                <th class="text-left py-2 px-3 section-label">Pembeli</th>
+                <th class="text-left py-2 px-3 section-label">Produk</th>
+                <th class="text-left py-2 px-3 section-label">Status</th>
+                <th class="text-right py-2 px-3 section-label">Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#E5E8EC]">
+              <tr v-for="order in reportData.orders" :key="order.id" class="hover:bg-[#F4F6F8] transition-colors">
+                <td class="py-3 px-3">
+                  <code class="bg-[#E5E8EC] px-1.5 py-0.5 rounded font-mono text-[11px] text-[#374151]">{{ order.id.slice(0, 8) }}…</code>
+                </td>
+                <td class="py-3 px-3 text-[#374151]">{{ order.buyer_name }}</td>
+                <td class="py-3 px-3 text-[#6B7280]">
+                  <span v-for="(item, i) in order.items" :key="item.id">
+                    {{ item.name }} (x{{ item.quantity }})<span v-if="i < order.items.length - 1">, </span>
+                  </span>
+                </td>
+                <td class="py-3 px-3">
+                  <span class="badge" :class="statusBadge(order.status)">{{ order.status }}</span>
+                </td>
+                <td class="py-3 px-3 text-right font-mono font-semibold text-primary-600">
+                  Rp{{ (order.total || 0).toLocaleString('id-ID') }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- end report tab -->
 
     <!-- Add Product Modal -->
     <div v-if="isAddModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D1117]/40 backdrop-blur-sm">
