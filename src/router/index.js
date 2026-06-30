@@ -16,22 +16,22 @@ const router = createRouter({
     {
       path: '/',
       name: 'landing',
-      component: LandingView
+      component: LandingView,
     },
     {
       path: '/login',
       name: 'login',
-      component: LoginView
+      component: LoginView,
     },
     {
       path: '/register',
       name: 'register',
-      component: () => import('../views/RegisterView.vue')
+      component: () => import('../views/RegisterView.vue'),
     },
     {
       path: '/role-selection',
       name: 'role-selection',
-      component: RoleSelectionView
+      component: RoleSelectionView,
     },
     {
       path: '/dashboard',
@@ -42,33 +42,33 @@ const router = createRouter({
           path: 'buyer',
           name: 'dashboard-buyer',
           component: BuyerDashboard,
-          meta: { role: 'Buyer' }
+          meta: { role: 'Buyer' },
         },
         {
           path: 'seller',
           name: 'dashboard-seller',
           component: SellerDashboard,
-          meta: { role: 'Seller' }
+          meta: { role: 'Seller' },
         },
         {
           path: 'driver',
           name: 'dashboard-driver',
           component: DriverDashboard,
-          meta: { role: 'Driver' }
+          meta: { role: 'Driver' },
         },
         {
           path: 'admin',
           name: 'dashboard-admin',
           component: AdminDashboard,
-          meta: { role: 'Admin' }
-        }
-      ]
+          meta: { role: 'Admin' },
+        },
+      ],
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/'
-    }
-  ]
+      redirect: '/',
+    },
+  ],
 })
 
 // Route guard
@@ -76,7 +76,7 @@ router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
   // 1. If route requires authentication
-  if (to.matched.some(record => record.meta.requiresAuth)) {
+  if (to.matched.some((record) => record.meta.requiresAuth)) {
     if (!authStore.isLoggedIn) {
       return next({ name: 'login' })
     }

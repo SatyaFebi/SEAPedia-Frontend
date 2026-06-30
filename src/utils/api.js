@@ -6,8 +6,8 @@ export async function apiRequest(path, options = {}) {
 
   const headers = {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    ...(options.headers || {})
+    Accept: 'application/json',
+    ...(options.headers || {}),
   }
 
   if (token) {
@@ -19,7 +19,7 @@ export async function apiRequest(path, options = {}) {
 
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers
+    headers,
   })
 
   // Parse JSON response safely

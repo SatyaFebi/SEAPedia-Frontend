@@ -2,20 +2,20 @@
 defineProps({
   variant: {
     type: String,
-    default: 'primary' // primary, secondary, ghost, danger
+    default: 'primary', // primary, secondary, ghost, danger
   },
   size: {
     type: String,
-    default: 'md' // sm, md, lg
+    default: 'md', // sm, md, lg
   },
   disabled: {
     type: Boolean,
-    default: false
+    default: false,
   },
   type: {
     type: String,
-    default: 'button'
-  }
+    default: 'button',
+  },
 })
 </script>
 

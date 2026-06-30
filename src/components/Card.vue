@@ -2,8 +2,8 @@
 defineProps({
   hover: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 </script>
 

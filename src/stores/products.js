@@ -6,7 +6,7 @@ export const useProductsStore = defineStore('products', () => {
   const products = ref([])
 
   function getProductsByStore(storeId) {
-    return products.value.filter(p => p.store_id === storeId)
+    return products.value.filter((p) => p.store_id === storeId)
   }
 
   async function fetchProducts() {
@@ -28,8 +28,8 @@ export const useProductsStore = defineStore('products', () => {
           price: productData.price,
           stock: productData.stock,
           image: productData.image,
-          category: productData.category
-        })
+          category: productData.category,
+        }),
       })
       products.value.push(data.product)
       return { success: true }
@@ -49,10 +49,10 @@ export const useProductsStore = defineStore('products', () => {
           price: productData.price,
           stock: productData.stock,
           image: productData.image,
-          category: productData.category
-        })
+          category: productData.category,
+        }),
       })
-      const index = products.value.findIndex(p => p.id === productId)
+      const index = products.value.findIndex((p) => p.id === productId)
       if (index !== -1) {
         products.value[index] = data.product
       }
@@ -66,7 +66,7 @@ export const useProductsStore = defineStore('products', () => {
   async function deleteProduct(productId) {
     try {
       await apiRequest(`/products/${productId}`, { method: 'DELETE' })
-      const index = products.value.findIndex(p => p.id === productId)
+      const index = products.value.findIndex((p) => p.id === productId)
       if (index !== -1) {
         products.value.splice(index, 1)
       }
@@ -83,6 +83,6 @@ export const useProductsStore = defineStore('products', () => {
     fetchProducts,
     addProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
   }
 })

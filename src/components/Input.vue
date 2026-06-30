@@ -4,15 +4,15 @@ defineProps({
   label: String,
   type: {
     type: String,
-    default: 'text'
+    default: 'text',
   },
   placeholder: String,
   required: {
     type: Boolean,
-    default: false
+    default: false,
   },
   error: String,
-  id: String
+  id: String,
 })
 defineEmits(['update:modelValue'])
 </script>

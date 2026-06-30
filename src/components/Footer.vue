@@ -8,7 +8,9 @@
         <span>SEAPedia</span>
       </div>
       <p>Satu platform untuk berbagai peran: Buyer, Seller, Driver, dan Admin.</p>
-      <p class="text-[10px] text-[#9CA3AF] mt-1">SEAPedia Marketplace &copy; 2026. Made with love for Nusantara.</p>
+      <p class="text-[10px] text-[#9CA3AF] mt-1">
+        SEAPedia Marketplace &copy; 2026. Made with love for Nusantara.
+      </p>
     </div>
   </footer>
 </template>

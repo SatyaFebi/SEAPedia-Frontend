@@ -1,61 +1,61 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ─────────────────────────────────────────────────────────────
    DESIGN TOKENS — SEAPedia "Clean Market" Design System
    ───────────────────────────────────────────────────────────── */
 @theme {
   /* Typography */
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
 
   /* Canvas & Surface */
-  --color-canvas: #FAFAFA;
-  --color-surface: #FFFFFF;
-  --color-surface-alt: #F4F6F8;
+  --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f4f6f8;
 
   /* Border */
-  --color-line: #E5E8EC;
-  --color-line-strong: #CBD5E1;
+  --color-line: #e5e8ec;
+  --color-line-strong: #cbd5e1;
 
   /* Text */
-  --color-text-strong: #0D1117;
+  --color-text-strong: #0d1117;
   --color-text-body: #374151;
-  --color-text-muted: #6B7280;
-  --color-text-subtle: #9CA3AF;
+  --color-text-muted: #6b7280;
+  --color-text-subtle: #9ca3af;
 
   /* Primary — Green */
-  --color-primary-50:  #F0FDF4;
-  --color-primary-100: #DCFCE7;
-  --color-primary-200: #BBF7D0;
-  --color-primary-300: #86EFAC;
-  --color-primary-400: #4ADE80;
-  --color-primary-500: #22C55E;
-  --color-primary-600: #16A34A;
-  --color-primary-700: #15803D;
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
   --color-primary-800: #166534;
-  --color-primary-900: #14532D;
-  --color-primary-950: #052E16;
+  --color-primary-900: #14532d;
+  --color-primary-950: #052e16;
 
   /* Accent — Blue (info, secondary) */
-  --color-accent-blue-50:  #EFF6FF;
-  --color-accent-blue-500: #3B82F6;
-  --color-accent-blue-600: #2563EB;
-  --color-accent-blue-100: #DBEAFE;
-  --color-accent-blue-700: #1D4ED8;
+  --color-accent-blue-50: #eff6ff;
+  --color-accent-blue-500: #3b82f6;
+  --color-accent-blue-600: #2563eb;
+  --color-accent-blue-100: #dbeafe;
+  --color-accent-blue-700: #1d4ed8;
 
   /* Accent — Amber (warning) */
-  --color-accent-amber-50:  #FFFBEB;
-  --color-accent-amber-100: #FEF3C7;
-  --color-accent-amber-500: #F59E0B;
-  --color-accent-amber-600: #D97706;
-  --color-accent-amber-700: #B45309;
+  --color-accent-amber-50: #fffbeb;
+  --color-accent-amber-100: #fef3c7;
+  --color-accent-amber-500: #f59e0b;
+  --color-accent-amber-600: #d97706;
+  --color-accent-amber-700: #b45309;
 
   /* Accent — Rose (danger/error) */
-  --color-accent-rose-50:  #FFF1F2;
-  --color-accent-rose-100: #FFE4E6;
-  --color-accent-rose-500: #F43F5E;
-  --color-accent-rose-600: #E11D48;
-  --color-accent-rose-700: #BE123C;
+  --color-accent-rose-50: #fff1f2;
+  --color-accent-rose-100: #ffe4e6;
+  --color-accent-rose-500: #f43f5e;
+  --color-accent-rose-600: #e11d48;
+  --color-accent-rose-700: #be123c;
 
   /* Shadows */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -68,7 +68,9 @@
 /* ─────────────────────────────────────────────────────────────
    BASE STYLES
    ───────────────────────────────────────────────────────────── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -93,7 +95,6 @@ body {
    COMPONENT CLASSES
    ───────────────────────────────────────────────────────────── */
 @layer components {
-
   /* Buttons */
   .btn {
     @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg text-sm transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed;

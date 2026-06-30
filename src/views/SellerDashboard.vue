@@ -17,11 +17,15 @@ const storeNameSuccess = ref(false)
 const storeNameError = ref('')
 
 // Watch for store changes to populate input
-watch(() => store.value, (newStore) => {
-  if (newStore) {
-    storeNameInput.value = newStore.name || ''
-  }
-}, { immediate: true })
+watch(
+  () => store.value,
+  (newStore) => {
+    if (newStore) {
+      storeNameInput.value = newStore.name || ''
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   await productsStore.fetchProducts()
@@ -30,13 +34,17 @@ onMounted(async () => {
 
 const sellerProducts = computed(() => productsStore.getProductsByStore(store.value.id))
 const storeOrders = computed(() => ordersStore.getSellerOrders(store.value.id))
-const incomingOrders = computed(() => storeOrders.value.filter(o => o.status === 'Sedang Dikemas'))
-const processedOrders = computed(() => storeOrders.value.filter(o => o.status !== 'Sedang Dikemas'))
+const incomingOrders = computed(() =>
+  storeOrders.value.filter((o) => o.status === 'Sedang Dikemas'),
+)
+const processedOrders = computed(() =>
+  storeOrders.value.filter((o) => o.status !== 'Sedang Dikemas'),
+)
 
 const activeTab = ref('dashboard')
 const reportData = ref({
   summary: { total_income: 0, total_orders: 0, processed_orders: 0, incoming_orders: 0 },
-  orders: []
+  orders: [],
 })
 
 async function fetchReportData() {
@@ -57,7 +65,14 @@ watch(activeTab, (newTab) => {
 const isAddModalOpen = ref(false)
 const isEditModalOpen = ref(false)
 const selectedProduct = ref(null)
-const productForm = ref({ name: '', price: 0, stock: 0, description: '', image: '', category: 'Kuliner' })
+const productForm = ref({
+  name: '',
+  price: 0,
+  stock: 0,
+  description: '',
+  image: '',
+  category: 'Kuliner',
+})
 const crudSuccessMessage = ref('')
 
 async function handleSaveStoreName() {
@@ -67,12 +82,14 @@ async function handleSaveStoreName() {
   try {
     const data = await apiRequest('/store', {
       method: 'POST',
-      body: JSON.stringify({ store_name: storeNameInput.value })
+      body: JSON.stringify({ store_name: storeNameInput.value }),
     })
     authStore.user.store = data.store
     localStorage.setItem('user', JSON.stringify(authStore.user))
     storeNameSuccess.value = true
-    setTimeout(() => { storeNameSuccess.value = false }, 3000)
+    setTimeout(() => {
+      storeNameSuccess.value = false
+    }, 3000)
     await productsStore.fetchProducts()
   } catch (err) {
     storeNameError.value = err.message || 'Gagal menyimpan nama toko.'
@@ -80,7 +97,14 @@ async function handleSaveStoreName() {
 }
 
 function openAddModal() {
-  productForm.value = { name: '', price: null, stock: null, description: '', image: '', category: 'Kuliner' }
+  productForm.value = {
+    name: '',
+    price: null,
+    stock: null,
+    description: '',
+    image: '',
+    category: 'Kuliner',
+  }
   isAddModalOpen.value = true
 }
 
@@ -106,7 +130,7 @@ function openEditModal(product) {
     stock: product.stock,
     description: product.description,
     image: product.image,
-    category: product.category || 'Kuliner'
+    category: product.category || 'Kuliner',
   }
   isEditModalOpen.value = true
 }
@@ -134,7 +158,9 @@ async function handleDeleteProduct(productId) {
 
 function triggerAlert(msg) {
   crudSuccessMessage.value = msg
-  setTimeout(() => { crudSuccessMessage.value = '' }, 4000)
+  setTimeout(() => {
+    crudSuccessMessage.value = ''
+  }, 4000)
 }
 
 async function handleShipOrder(orderId) {
@@ -146,7 +172,9 @@ async function handleShipOrder(orderId) {
 }
 
 const totalRevenue = computed(() =>
-  storeOrders.value.filter(o => o.status === 'Pesanan Selesai').reduce((sum, o) => sum + o.subtotal, 0)
+  storeOrders.value
+    .filter((o) => o.status === 'Pesanan Selesai')
+    .reduce((sum, o) => sum + o.subtotal, 0),
 )
 const activeProductsCount = computed(() => sellerProducts.value.length)
 
@@ -161,248 +189,375 @@ const statusBadge = (status) => {
 
 <template>
   <div class="space-y-6 text-[#374151]">
-
     <!-- Tab Navigation -->
     <div class="flex gap-2 border-b border-[#E5E8EC] pb-0">
       <button
         @click="activeTab = 'dashboard'"
-        :class="activeTab === 'dashboard' ? 'border-b-2 border-primary-600 text-primary-600 font-semibold' : 'text-[#6B7280] hover:text-[#374151]'"
+        :class="
+          activeTab === 'dashboard'
+            ? 'border-b-2 border-primary-600 text-primary-600 font-semibold'
+            : 'text-[#6B7280] hover:text-[#374151]'
+        "
         class="px-4 py-2.5 text-sm transition-colors cursor-pointer"
-      >🏪 Dashboard Toko</button>
+      >
+        🏪 Dashboard Toko
+      </button>
       <button
         @click="activeTab = 'report'"
-        :class="activeTab === 'report' ? 'border-b-2 border-primary-600 text-primary-600 font-semibold' : 'text-[#6B7280] hover:text-[#374151]'"
+        :class="
+          activeTab === 'report'
+            ? 'border-b-2 border-primary-600 text-primary-600 font-semibold'
+            : 'text-[#6B7280] hover:text-[#374151]'
+        "
         class="px-4 py-2.5 text-sm transition-colors cursor-pointer"
-      >📊 Laporan Penjualan</button>
+      >
+        📊 Laporan Penjualan
+      </button>
     </div>
 
     <!-- Dashboard Tab -->
     <div v-show="activeTab === 'dashboard'">
-
-    <!-- Stats row -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="stat-card">
-        <p class="stat-label">Pendapatan Selesai</p>
-        <p class="stat-value text-primary-600">Rp{{ totalRevenue.toLocaleString('id-ID') }}</p>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">Produk Aktif</p>
-        <p class="stat-value">{{ activeProductsCount }}</p>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">Pesanan Masuk</p>
-        <p class="stat-value text-accent-amber-600">{{ incomingOrders.length }}</p>
-      </div>
-      <!-- Store name editor -->
-      <div class="card p-5 space-y-2">
-        <p class="stat-label">Nama Toko</p>
-        <div class="flex gap-2">
-          <input type="text" v-model="storeNameInput" class="input text-sm flex-1 min-w-0" />
-          <button @click="handleSaveStoreName" class="btn-primary btn-sm shrink-0">Simpan</button>
+      <!-- Stats row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-card">
+          <p class="stat-label">Pendapatan Selesai</p>
+          <p class="stat-value text-primary-600">Rp{{ totalRevenue.toLocaleString('id-ID') }}</p>
         </div>
-        <p v-if="storeNameSuccess" class="text-primary-600 text-xs">Tersimpan!</p>
-        <p v-if="storeNameError" class="text-accent-rose-500 text-xs">{{ storeNameError }}</p>
-        <p class="text-xs text-[#9CA3AF]">ID: {{ store.id || '-' }}</p>
+        <div class="stat-card">
+          <p class="stat-label">Produk Aktif</p>
+          <p class="stat-value">{{ activeProductsCount }}</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Pesanan Masuk</p>
+          <p class="stat-value text-accent-amber-600">{{ incomingOrders.length }}</p>
+        </div>
+        <!-- Store name editor -->
+        <div class="card p-5 space-y-2">
+          <p class="stat-label">Nama Toko</p>
+          <div class="flex gap-2">
+            <input type="text" v-model="storeNameInput" class="input text-sm flex-1 min-w-0" />
+            <button @click="handleSaveStoreName" class="btn-primary btn-sm shrink-0">Simpan</button>
+          </div>
+          <p v-if="storeNameSuccess" class="text-primary-600 text-xs">Tersimpan!</p>
+          <p v-if="storeNameError" class="text-accent-rose-500 text-xs">{{ storeNameError }}</p>
+          <p class="text-xs text-[#9CA3AF]">ID: {{ store.id || '-' }}</p>
+        </div>
       </div>
-    </div>
 
-    <!-- Alert -->
-    <div v-if="crudSuccessMessage" class="px-4 py-3 bg-primary-50 border border-primary-100 rounded-xl text-sm text-primary-700 font-medium">
-      {{ crudSuccessMessage }}
-    </div>
+      <!-- Alert -->
+      <div
+        v-if="crudSuccessMessage"
+        class="px-4 py-3 bg-primary-50 border border-primary-100 rounded-xl text-sm text-primary-700 font-medium"
+      >
+        {{ crudSuccessMessage }}
+      </div>
 
-    <!-- Main grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Product table -->
+        <div class="card p-6 lg:col-span-2 space-y-5">
+          <div class="flex items-center justify-between pb-4 border-b border-[#E5E8EC]">
+            <h3 class="font-display font-semibold text-[#0D1117]">Produk Toko</h3>
+            <button @click="openAddModal" class="btn-primary btn-sm">+ Tambah Produk</button>
+          </div>
 
-      <!-- Product table -->
-      <div class="card p-6 lg:col-span-2 space-y-5">
-        <div class="flex items-center justify-between pb-4 border-b border-[#E5E8EC]">
-          <h3 class="font-display font-semibold text-[#0D1117]">Produk Toko</h3>
-          <button @click="openAddModal" class="btn-primary btn-sm">+ Tambah Produk</button>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="border-b border-[#E5E8EC]">
+                  <th class="text-left py-2 px-3 section-label">Produk</th>
+                  <th class="text-left py-2 px-3 section-label">Stok</th>
+                  <th class="text-left py-2 px-3 section-label">Harga</th>
+                  <th class="py-2 px-3"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[#E5E8EC]">
+                <tr v-if="sellerProducts.length === 0">
+                  <td colspan="4" class="py-8 text-center text-sm text-[#9CA3AF]">
+                    Belum ada produk.
+                  </td>
+                </tr>
+                <tr
+                  v-for="product in sellerProducts"
+                  :key="product.id"
+                  class="hover:bg-[#F4F6F8] transition-colors"
+                >
+                  <td class="py-3 px-3">
+                    <div class="flex items-center gap-3">
+                      <img
+                        :src="product.image"
+                        class="w-9 h-9 object-cover rounded-lg bg-[#E5E8EC] shrink-0"
+                      />
+                      <div>
+                        <p class="font-medium text-[#0D1117] line-clamp-1">{{ product.name }}</p>
+                        <p class="text-xs text-[#9CA3AF] truncate max-w-48">
+                          {{ product.description || 'Tidak ada deskripsi' }}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-3">
+                    <span
+                      :class="
+                        product.stock <= 5
+                          ? 'text-accent-amber-600 font-semibold'
+                          : 'text-[#374151]'
+                      "
+                      >{{ product.stock }} pcs</span
+                    >
+                  </td>
+                  <td class="py-3 px-3 font-mono text-[#374151]">
+                    Rp{{ product.price.toLocaleString('id-ID') }}
+                  </td>
+                  <td class="py-3 px-3 text-right space-x-3">
+                    <button
+                      @click="openEditModal(product)"
+                      class="text-sm text-accent-blue-600 hover:text-accent-blue-700 font-medium cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      @click="handleDeleteProduct(product.id)"
+                      class="text-sm text-accent-rose-500 hover:text-accent-rose-600 font-medium cursor-pointer"
+                    >
+                      Hapus
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm border-collapse">
-            <thead>
-              <tr class="border-b border-[#E5E8EC]">
-                <th class="text-left py-2 px-3 section-label">Produk</th>
-                <th class="text-left py-2 px-3 section-label">Stok</th>
-                <th class="text-left py-2 px-3 section-label">Harga</th>
-                <th class="py-2 px-3"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[#E5E8EC]">
-              <tr v-if="sellerProducts.length === 0">
-                <td colspan="4" class="py-8 text-center text-sm text-[#9CA3AF]">Belum ada produk.</td>
-              </tr>
-              <tr v-for="product in sellerProducts" :key="product.id" class="hover:bg-[#F4F6F8] transition-colors">
-                <td class="py-3 px-3">
-                  <div class="flex items-center gap-3">
-                    <img :src="product.image" class="w-9 h-9 object-cover rounded-lg bg-[#E5E8EC] shrink-0" />
-                    <div>
-                      <p class="font-medium text-[#0D1117] line-clamp-1">{{ product.name }}</p>
-                      <p class="text-xs text-[#9CA3AF] truncate max-w-48">{{ product.description || 'Tidak ada deskripsi' }}</p>
+        <!-- Orders column -->
+        <div class="space-y-5">
+          <!-- Incoming orders -->
+          <div class="card p-5 space-y-4">
+            <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">
+              Pesanan Masuk
+            </h3>
+
+            <div v-if="incomingOrders.length === 0" class="py-6 text-center text-sm text-[#9CA3AF]">
+              Tidak ada pesanan baru.
+            </div>
+
+            <div v-else class="space-y-3">
+              <div
+                v-for="order in incomingOrders"
+                :key="order.id"
+                class="border border-[#E5E8EC] rounded-xl p-4 space-y-3 bg-[#FAFAFA]"
+              >
+                <div class="flex items-center justify-between text-xs">
+                  <code class="bg-[#E5E8EC] px-2 py-0.5 rounded font-mono text-[#374151]">{{
+                    order.id
+                  }}</code>
+                  <span class="text-[#9CA3AF]">{{ order.delivery_method }}</span>
+                </div>
+                <div class="space-y-1">
+                  <div
+                    v-for="item in order.items"
+                    :key="item.id"
+                    class="flex justify-between text-xs text-[#374151]"
+                  >
+                    <span>{{ item.name }} (x{{ item.quantity }})</span>
+                    <span>Rp{{ (item.price * item.quantity).toLocaleString('id-ID') }}</span>
+                  </div>
+                </div>
+
+                <!-- Pricing Breakdown -->
+                <div
+                  class="bg-white border border-[#E5E8EC] rounded-lg p-2.5 space-y-1 text-[11px] text-[#6B7280]"
+                >
+                  <div class="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>Rp{{ order.subtotal.toLocaleString('id-ID') }}</span>
+                  </div>
+                  <div
+                    v-if="order.discount_amount > 0"
+                    class="flex justify-between text-accent-rose-600"
+                  >
+                    <span
+                      >Diskon ({{ order.discount_type === 'VOUCHER' ? 'Voucher' : 'Promo' }}:
+                      {{ order.discount_code }})</span
+                    >
+                    <span>-Rp{{ order.discount_amount.toLocaleString('id-ID') }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>Ongkos Kirim</span>
+                    <span>Rp{{ order.delivery_fee.toLocaleString('id-ID') }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>PPN 12%</span>
+                    <span>Rp{{ order.tax_amount.toLocaleString('id-ID') }}</span>
+                  </div>
+                  <div
+                    class="border-t border-[#E5E8EC] pt-1 flex justify-between font-bold text-[#0D1117] text-xs"
+                  >
+                    <span>Total</span>
+                    <span class="text-primary-600"
+                      >Rp{{ order.total.toLocaleString('id-ID') }}</span
+                    >
+                  </div>
+                </div>
+
+                <!-- Status log -->
+                <div class="bg-white border border-[#E5E8EC] rounded-lg p-2 text-[10px]">
+                  <p class="font-semibold text-[#0D1117] mb-2">Timeline Status</p>
+                  <div class="space-y-1.5">
+                    <div
+                      v-for="(log, idx) in order.status_history"
+                      :key="idx"
+                      class="flex items-start gap-2 text-[10px]"
+                    >
+                      <div
+                        class="w-1.5 h-1.5 rounded-full mt-1 shrink-0"
+                        :class="
+                          idx === order.status_history.length - 1
+                            ? 'bg-primary-500'
+                            : 'bg-[#D1D5DB]'
+                        "
+                      ></div>
+                      <div>
+                        <span class="font-medium text-[#374151]">{{ log.status }}</span>
+                        <span class="text-[#9CA3AF] ml-1">· {{ log.changed_by_role }}</span>
+                        <p class="text-[#9CA3AF] font-mono">{{ log.timestamp }}</p>
+                      </div>
                     </div>
                   </div>
-                </td>
-                <td class="py-3 px-3">
-                  <span :class="product.stock <= 5 ? 'text-accent-amber-600 font-semibold' : 'text-[#374151]'">{{ product.stock }} pcs</span>
-                </td>
-                <td class="py-3 px-3 font-mono text-[#374151]">Rp{{ product.price.toLocaleString('id-ID') }}</td>
-                <td class="py-3 px-3 text-right space-x-3">
-                  <button @click="openEditModal(product)" class="text-sm text-accent-blue-600 hover:text-accent-blue-700 font-medium cursor-pointer">Edit</button>
-                  <button @click="handleDeleteProduct(product.id)" class="text-sm text-accent-rose-500 hover:text-accent-rose-600 font-medium cursor-pointer">Hapus</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Orders column -->
-      <div class="space-y-5">
-
-        <!-- Incoming orders -->
-        <div class="card p-5 space-y-4">
-          <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">Pesanan Masuk</h3>
-
-          <div v-if="incomingOrders.length === 0" class="py-6 text-center text-sm text-[#9CA3AF]">Tidak ada pesanan baru.</div>
-
-          <div v-else class="space-y-3">
-            <div
-              v-for="order in incomingOrders"
-              :key="order.id"
-              class="border border-[#E5E8EC] rounded-xl p-4 space-y-3 bg-[#FAFAFA]"
-            >
-              <div class="flex items-center justify-between text-xs">
-                <code class="bg-[#E5E8EC] px-2 py-0.5 rounded font-mono text-[#374151]">{{ order.id }}</code>
-                <span class="text-[#9CA3AF]">{{ order.delivery_method }}</span>
-              </div>
-              <div class="space-y-1">
-                <div v-for="item in order.items" :key="item.id" class="flex justify-between text-xs text-[#374151]">
-                  <span>{{ item.name }} (x{{ item.quantity }})</span>
-                  <span>Rp{{ (item.price * item.quantity).toLocaleString('id-ID') }}</span>
                 </div>
-              </div>
-              
-              <!-- Pricing Breakdown -->
-              <div class="bg-white border border-[#E5E8EC] rounded-lg p-2.5 space-y-1 text-[11px] text-[#6B7280]">
-                <div class="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>Rp{{ order.subtotal.toLocaleString('id-ID') }}</span>
-                </div>
-                <div v-if="order.discount_amount > 0" class="flex justify-between text-accent-rose-600">
-                  <span>Diskon ({{ order.discount_type === 'VOUCHER' ? 'Voucher' : 'Promo' }}: {{ order.discount_code }})</span>
-                  <span>-Rp{{ order.discount_amount.toLocaleString('id-ID') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span>Ongkos Kirim</span>
-                  <span>Rp{{ order.delivery_fee.toLocaleString('id-ID') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span>PPN 12%</span>
-                  <span>Rp{{ order.tax_amount.toLocaleString('id-ID') }}</span>
-                </div>
-                <div class="border-t border-[#E5E8EC] pt-1 flex justify-between font-bold text-[#0D1117] text-xs">
-                  <span>Total</span>
-                  <span class="text-primary-600">Rp{{ order.total.toLocaleString('id-ID') }}</span>
-                </div>
-              </div>
 
-              <!-- Status log -->
-              <div class="bg-white border border-[#E5E8EC] rounded-lg p-2 text-[10px]">
-                <p class="font-semibold text-[#0D1117] mb-1">Timeline Status</p>
-                <ul class="space-y-0.5 text-[#6B7280]">
-                  <li v-for="log in order.status_history" :key="log.status" class="flex justify-between">
-                    <span>→ {{ log.status }}</span>
-                    <span class="font-mono text-[#9CA3AF]">{{ log.timestamp }}</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div class="flex items-center justify-between pt-2 border-t border-[#E5E8EC]">
-                <span class="text-xs text-[#6B7280]">Pembeli: {{ order.buyer_name }}</span>
-                <button @click="handleShipOrder(order.id)" class="btn-primary btn-sm">Proses Pesanan →</button>
+                <div class="flex items-center justify-between pt-2 border-t border-[#E5E8EC]">
+                  <span class="text-xs text-[#6B7280]">Pembeli: {{ order.buyer_name }}</span>
+                  <button @click="handleShipOrder(order.id)" class="btn-primary btn-sm">
+                    Proses Pesanan →
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Order history -->
-        <div class="card p-5 space-y-4">
-          <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">Riwayat Pesanan</h3>
+          <!-- Order history -->
+          <div class="card p-5 space-y-4">
+            <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">
+              Riwayat Pesanan
+            </h3>
 
-          <div v-if="processedOrders.length === 0" class="py-4 text-center text-sm text-[#9CA3AF]">Belum ada riwayat.</div>
-
-          <div v-else class="space-y-3 max-h-96 overflow-y-auto pr-1">
             <div
-              v-for="order in processedOrders"
-              :key="order.id"
-              class="border border-[#E5E8EC] rounded-xl p-3 space-y-2 bg-[#FAFAFA] text-xs"
+              v-if="processedOrders.length === 0"
+              class="py-4 text-center text-sm text-[#9CA3AF]"
             >
-              <div class="flex items-center justify-between">
-                <code class="bg-[#E5E8EC] px-2 py-0.5 rounded font-mono text-[#374151]">{{ order.id }}</code>
-                <span class="badge" :class="statusBadge(order.status)">{{ order.status }}</span>
-              </div>
-              
-              <div class="space-y-1 text-[#374151]">
-                <div v-for="item in order.items" :key="item.id" class="flex justify-between">
-                  <span>{{ item.name }} (x{{ item.quantity }})</span>
-                  <span>Rp{{ (item.price * item.quantity).toLocaleString('id-ID') }}</span>
-                </div>
-              </div>
+              Belum ada riwayat.
+            </div>
 
-              <!-- Pricing Breakdown -->
-              <div class="bg-white border border-[#E5E8EC] rounded-lg p-2 space-y-1 text-[10px] text-[#6B7280]">
-                <div class="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>Rp{{ order.subtotal.toLocaleString('id-ID') }}</span>
+            <div v-else class="space-y-3 max-h-96 overflow-y-auto pr-1">
+              <div
+                v-for="order in processedOrders"
+                :key="order.id"
+                class="border border-[#E5E8EC] rounded-xl p-3 space-y-2 bg-[#FAFAFA] text-xs"
+              >
+                <div class="flex items-center justify-between">
+                  <code class="bg-[#E5E8EC] px-2 py-0.5 rounded font-mono text-[#374151]">{{
+                    order.id
+                  }}</code>
+                  <span class="badge" :class="statusBadge(order.status)">{{ order.status }}</span>
                 </div>
-                <div v-if="order.discount_amount > 0" class="flex justify-between text-accent-rose-600">
-                  <span>Diskon ({{ order.discount_type === 'VOUCHER' ? 'Voucher' : 'Promo' }}: {{ order.discount_code }})</span>
-                  <span>-Rp{{ order.discount_amount.toLocaleString('id-ID') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span>Ongkir</span>
-                  <span>Rp{{ order.delivery_fee.toLocaleString('id-ID') }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span>PPN 12%</span>
-                  <span>Rp{{ order.tax_amount.toLocaleString('id-ID') }}</span>
-                </div>
-                <div class="border-t border-[#E5E8EC] pt-1 flex justify-between font-bold text-[#0D1117] text-xs">
-                  <span>Total</span>
-                  <span class="text-primary-600">Rp{{ order.total.toLocaleString('id-ID') }}</span>
-                </div>
-              </div>
 
-              <!-- Status log -->
-              <div class="bg-white border border-[#E5E8EC] rounded-lg p-2 text-[10px]">
-                <p class="font-semibold text-[#0D1117] mb-1">Timeline Status</p>
-                <ul class="space-y-0.5 text-[#6B7280]">
-                  <li v-for="log in order.status_history" :key="log.status" class="flex justify-between">
-                    <span>→ {{ log.status }}</span>
-                    <span class="font-mono text-[#9CA3AF]">{{ log.timestamp }}</span>
-                  </li>
-                </ul>
+                <div class="space-y-1 text-[#374151]">
+                  <div v-for="item in order.items" :key="item.id" class="flex justify-between">
+                    <span>{{ item.name }} (x{{ item.quantity }})</span>
+                    <span>Rp{{ (item.price * item.quantity).toLocaleString('id-ID') }}</span>
+                  </div>
+                </div>
+
+                <!-- Pricing Breakdown -->
+                <div
+                  class="bg-white border border-[#E5E8EC] rounded-lg p-2 space-y-1 text-[10px] text-[#6B7280]"
+                >
+                  <div class="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>Rp{{ order.subtotal.toLocaleString('id-ID') }}</span>
+                  </div>
+                  <div
+                    v-if="order.discount_amount > 0"
+                    class="flex justify-between text-accent-rose-600"
+                  >
+                    <span
+                      >Diskon ({{ order.discount_type === 'VOUCHER' ? 'Voucher' : 'Promo' }}:
+                      {{ order.discount_code }})</span
+                    >
+                    <span>-Rp{{ order.discount_amount.toLocaleString('id-ID') }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>Ongkir</span>
+                    <span>Rp{{ order.delivery_fee.toLocaleString('id-ID') }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>PPN 12%</span>
+                    <span>Rp{{ order.tax_amount.toLocaleString('id-ID') }}</span>
+                  </div>
+                  <div
+                    class="border-t border-[#E5E8EC] pt-1 flex justify-between font-bold text-[#0D1117] text-xs"
+                  >
+                    <span>Total</span>
+                    <span class="text-primary-600"
+                      >Rp{{ order.total.toLocaleString('id-ID') }}</span
+                    >
+                  </div>
+                </div>
+
+                <!-- Driver info if assigned -->
+                <div
+                  v-if="order.driver_name"
+                  class="flex items-center gap-2 px-2 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-[10px]"
+                >
+                  <span>🛵</span>
+                  <span class="text-indigo-600"
+                    >Driver: <strong>{{ order.driver_name }}</strong></span
+                  >
+                </div>
+
+                <!-- Status log -->
+                <div class="bg-white border border-[#E5E8EC] rounded-lg p-2 text-[10px]">
+                  <p class="font-semibold text-[#0D1117] mb-2">Timeline Status</p>
+                  <div class="space-y-1.5">
+                    <div
+                      v-for="(log, idx) in order.status_history"
+                      :key="idx"
+                      class="flex items-start gap-2"
+                    >
+                      <div
+                        class="w-1.5 h-1.5 rounded-full mt-1 shrink-0"
+                        :class="
+                          idx === order.status_history.length - 1
+                            ? 'bg-primary-500'
+                            : 'bg-[#D1D5DB]'
+                        "
+                      ></div>
+                      <div>
+                        <span class="font-medium text-[#374151]">{{ log.status }}</span>
+                        <span class="text-[#9CA3AF] ml-1">· {{ log.changed_by_role }}</span>
+                        <p class="text-[#9CA3AF] font-mono">{{ log.timestamp }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
     </div>
-
-    </div><!-- end dashboard tab -->
+    <!-- end dashboard tab -->
 
     <!-- Report Tab -->
     <div v-show="activeTab === 'report'" class="space-y-6">
-
       <!-- Summary Cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="stat-card">
           <p class="stat-label">Total Pendapatan</p>
-          <p class="stat-value text-primary-600">Rp{{ (reportData.summary.total_income || 0).toLocaleString('id-ID') }}</p>
+          <p class="stat-value text-primary-600">
+            Rp{{ (reportData.summary.total_income || 0).toLocaleString('id-ID') }}
+          </p>
         </div>
         <div class="stat-card">
           <p class="stat-label">Total Pesanan</p>
@@ -414,15 +569,22 @@ const statusBadge = (status) => {
         </div>
         <div class="stat-card">
           <p class="stat-label">Pesanan Masuk</p>
-          <p class="stat-value text-accent-amber-600">{{ reportData.summary.incoming_orders || 0 }}</p>
+          <p class="stat-value text-accent-amber-600">
+            {{ reportData.summary.incoming_orders || 0 }}
+          </p>
         </div>
       </div>
 
       <!-- Orders Table -->
       <div class="card p-6 space-y-4">
-        <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">Riwayat Transaksi</h3>
+        <h3 class="font-display font-semibold text-[#0D1117] pb-3 border-b border-[#E5E8EC]">
+          Riwayat Transaksi
+        </h3>
 
-        <div v-if="!reportData.orders || reportData.orders.length === 0" class="py-10 text-center text-sm text-[#9CA3AF]">
+        <div
+          v-if="!reportData.orders || reportData.orders.length === 0"
+          class="py-10 text-center text-sm text-[#9CA3AF]"
+        >
           Belum ada data penjualan.
         </div>
 
@@ -438,14 +600,23 @@ const statusBadge = (status) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-[#E5E8EC]">
-              <tr v-for="order in reportData.orders" :key="order.id" class="hover:bg-[#F4F6F8] transition-colors">
+              <tr
+                v-for="order in reportData.orders"
+                :key="order.id"
+                class="hover:bg-[#F4F6F8] transition-colors"
+              >
                 <td class="py-3 px-3">
-                  <code class="bg-[#E5E8EC] px-1.5 py-0.5 rounded font-mono text-[11px] text-[#374151]">{{ order.id.slice(0, 8) }}…</code>
+                  <code
+                    class="bg-[#E5E8EC] px-1.5 py-0.5 rounded font-mono text-[11px] text-[#374151]"
+                    >{{ order.id.slice(0, 8) }}…</code
+                  >
                 </td>
                 <td class="py-3 px-3 text-[#374151]">{{ order.buyer_name }}</td>
                 <td class="py-3 px-3 text-[#6B7280]">
                   <span v-for="(item, i) in order.items" :key="item.id">
-                    {{ item.name }} (x{{ item.quantity }})<span v-if="i < order.items.length - 1">, </span>
+                    {{ item.name }} (x{{ item.quantity }})<span v-if="i < order.items.length - 1"
+                      >,
+                    </span>
                   </span>
                 </td>
                 <td class="py-3 px-3">
@@ -459,15 +630,25 @@ const statusBadge = (status) => {
           </table>
         </div>
       </div>
-
-    </div><!-- end report tab -->
+    </div>
+    <!-- end report tab -->
 
     <!-- Add Product Modal -->
-    <div v-if="isAddModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D1117]/40 backdrop-blur-sm">
-      <div class="w-full max-w-lg bg-white rounded-2xl border border-[#E5E8EC] shadow-xl overflow-hidden">
+    <div
+      v-if="isAddModalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D1117]/40 backdrop-blur-sm"
+    >
+      <div
+        class="w-full max-w-lg bg-white rounded-2xl border border-[#E5E8EC] shadow-xl overflow-hidden"
+      >
         <div class="px-6 py-4 border-b border-[#E5E8EC] flex items-center justify-between">
           <h3 class="font-display font-bold text-[#0D1117]">Tambah Produk</h3>
-          <button @click="isAddModalOpen = false" class="w-8 h-8 flex items-center justify-center rounded-lg bg-[#F4F6F8] text-[#6B7280] hover:text-[#0D1117] text-sm cursor-pointer">✕</button>
+          <button
+            @click="isAddModalOpen = false"
+            class="w-8 h-8 flex items-center justify-center rounded-lg bg-[#F4F6F8] text-[#6B7280] hover:text-[#0D1117] text-sm cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
         <div class="p-6 space-y-4">
           <div>
@@ -497,7 +678,12 @@ const statusBadge = (status) => {
           </div>
           <div>
             <label class="input-label">URL Gambar</label>
-            <input type="text" v-model="productForm.image" class="input" placeholder="https://..." />
+            <input
+              type="text"
+              v-model="productForm.image"
+              class="input"
+              placeholder="https://..."
+            />
           </div>
         </div>
         <div class="px-6 py-4 border-t border-[#E5E8EC] flex justify-end gap-3">
@@ -508,11 +694,21 @@ const statusBadge = (status) => {
     </div>
 
     <!-- Edit Product Modal -->
-    <div v-if="isEditModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D1117]/40 backdrop-blur-sm">
-      <div class="w-full max-w-lg bg-white rounded-2xl border border-[#E5E8EC] shadow-xl overflow-hidden">
+    <div
+      v-if="isEditModalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D1117]/40 backdrop-blur-sm"
+    >
+      <div
+        class="w-full max-w-lg bg-white rounded-2xl border border-[#E5E8EC] shadow-xl overflow-hidden"
+      >
         <div class="px-6 py-4 border-b border-[#E5E8EC] flex items-center justify-between">
           <h3 class="font-display font-bold text-[#0D1117]">Edit Produk</h3>
-          <button @click="isEditModalOpen = false" class="w-8 h-8 flex items-center justify-center rounded-lg bg-[#F4F6F8] text-[#6B7280] hover:text-[#0D1117] text-sm cursor-pointer">✕</button>
+          <button
+            @click="isEditModalOpen = false"
+            class="w-8 h-8 flex items-center justify-center rounded-lg bg-[#F4F6F8] text-[#6B7280] hover:text-[#0D1117] text-sm cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
         <div class="p-6 space-y-4">
           <div>
@@ -551,6 +747,5 @@ const statusBadge = (status) => {
         </div>
       </div>
     </div>
-
   </div>
 </template>

@@ -48,9 +48,10 @@ function handleQuickLogin(username) {
 
 <template>
   <div class="min-h-screen bg-[#FAFAFA] flex font-sans">
-
     <!-- Left branding panel -->
-    <div class="hidden lg:flex flex-col justify-between w-80 bg-primary-600 p-10 text-white shrink-0">
+    <div
+      class="hidden lg:flex flex-col justify-between w-80 bg-primary-600 p-10 text-white shrink-0"
+    >
       <div>
         <div class="flex items-center gap-2.5 mb-16">
           <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
@@ -59,14 +60,18 @@ function handleQuickLogin(username) {
           <span class="font-display font-bold text-white text-lg tracking-tight">SEAPedia</span>
         </div>
         <h2 class="font-display font-bold text-2xl leading-snug">
-          Platform Marketplace<br>Multi-Role Nusantara
+          Platform Marketplace<br />Multi-Role Nusantara
         </h2>
         <p class="text-primary-100 text-sm mt-4 leading-relaxed">
           Satu platform untuk berbelanja, berjualan, dan mengantarkan produk lokal.
         </p>
       </div>
       <div class="space-y-3">
-        <div v-for="role in ['🛒 Buyer', '🏪 Seller', '🛵 Driver']" :key="role" class="flex items-center gap-3 text-sm text-primary-100">
+        <div
+          v-for="role in ['🛒 Buyer', '🏪 Seller', '🛵 Driver']"
+          :key="role"
+          class="flex items-center gap-3 text-sm text-primary-100"
+        >
           <span class="w-1.5 h-1.5 rounded-full bg-primary-300"></span>{{ role }}
         </div>
       </div>
@@ -75,7 +80,6 @@ function handleQuickLogin(username) {
     <!-- Right form panel -->
     <div class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
       <div class="w-full max-w-sm space-y-8 py-8">
-
         <!-- Logo mobile only -->
         <div class="lg:hidden text-center">
           <div class="inline-flex items-center gap-2">
@@ -126,7 +130,10 @@ function handleQuickLogin(username) {
 
         <div class="text-center text-xs text-[#9CA3AF]">
           Belum punya akun?
-          <router-link to="/register" class="font-semibold text-primary-600 hover:text-primary-700 transition-colors ml-1">
+          <router-link
+            to="/register"
+            class="font-semibold text-primary-600 hover:text-primary-700 transition-colors ml-1"
+          >
             Daftar sekarang
           </router-link>
         </div>
@@ -145,7 +152,9 @@ function handleQuickLogin(username) {
               @click="handleQuickLogin(mock.username)"
               class="group p-3 bg-white border border-[#E5E8EC] rounded-xl text-left hover:border-primary-300 hover:shadow-xs transition-all cursor-pointer"
             >
-              <p class="text-sm font-semibold text-[#0D1117] group-hover:text-primary-700 transition-colors truncate">
+              <p
+                class="text-sm font-semibold text-[#0D1117] group-hover:text-primary-700 transition-colors truncate"
+              >
                 {{ mock.name.split(' ')[0] }}
               </p>
               <p class="text-xs text-[#9CA3AF] mt-0.5">{{ mock.username }}</p>
@@ -160,13 +169,17 @@ function handleQuickLogin(username) {
                     'badge-green': role === 'Driver',
                     'badge-gray': role === 'Admin',
                   }"
-                >{{ role }}</span>
+                  >{{ role }}</span
+                >
               </div>
             </button>
           </div>
         </div>
 
-        <router-link to="/" class="block text-center text-xs text-[#9CA3AF] hover:text-[#374151] transition-colors">
+        <router-link
+          to="/"
+          class="block text-center text-xs text-[#9CA3AF] hover:text-[#374151] transition-colors"
+        >
           ← Kembali ke toko utama
         </router-link>
       </div>

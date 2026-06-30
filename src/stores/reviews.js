@@ -34,8 +34,8 @@ export const useReviewsStore = defineStore('reviews', () => {
         body: JSON.stringify({
           reviewer_name: reviewData.name || 'Tamu Anonim',
           rating: reviewData.rating,
-          comment: sanitizedComment
-        })
+          comment: sanitizedComment,
+        }),
       })
       reviews.value.unshift(data)
       return { success: true }
@@ -50,6 +50,6 @@ export const useReviewsStore = defineStore('reviews', () => {
   return {
     reviews,
     fetchReviews,
-    addReview
+    addReview,
   }
 })

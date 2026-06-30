@@ -39,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await apiRequest('/register', {
         method: 'POST',
-        body: JSON.stringify(userData)
+        body: JSON.stringify(userData),
       })
 
       localStorage.setItem('api_token', data.token)
@@ -64,7 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await apiRequest('/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password }),
       })
 
       localStorage.setItem('api_token', data.token)
@@ -114,7 +114,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await apiRequest('/wallet/topup', {
         method: 'POST',
-        body: JSON.stringify({ amount })
+        body: JSON.stringify({ amount }),
       })
       if (user.value) {
         user.value.walletBalance = data.balance
@@ -131,7 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await apiRequest('/addresses', {
         method: 'POST',
-        body: JSON.stringify({ address_details: newAddress, is_main: true })
+        body: JSON.stringify({ address_details: newAddress, is_main: true }),
       })
       if (user.value) {
         user.value.address = data.address.address_details
@@ -153,6 +153,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     setActiveRole,
     topUpWallet,
-    updateAddress
+    updateAddress,
   }
 })

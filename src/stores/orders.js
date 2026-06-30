@@ -1,47 +1,18 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
 import { apiRequest } from '../utils/api'
 
 export const useOrdersStore = defineStore('orders', () => {
-  const orders = ref([
-    // Mock existing order for Siti (as Buyer) from Budi's store (completed)
-    {
-      id: 'ORD-100200',
-      buyer_id: 'usr-siti',
-      buyer_name: 'Siti Rahma',
-      buyer_address: 'Jl. Sudirman No. 88, Surabaya',
-      store_id: 'str-budi',
-      store_name: 'Budi Lestari Jaya',
-      items: [
-        {
-          id: 'prod-1',
-          name: 'Sambal Roa Khas Manado Premium',
-          price: 45000,
-          quantity: 2,
-          image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&q=80&w=400',
-        }
-      ],
-      delivery_method: 'Regular',
-      delivery_fee: 9000,
-      discount: null,
-      subtotal: 90000,
-      ppn: 11880, // (90000 + 9000) * 12%
-      total: 110880,
-      status: 'Pesanan Selesai',
-      driver_id: 'usr-agus',
-      driver_name: 'Agus Setiawan',
-      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toLocaleString('id-ID'), // 3 days ago
-      days_in_current_status: 0,
-      status_history: [
-        { status: 'Sedang Dikemas', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toLocaleString('id-ID') },
-        { status: 'Menunggu Pengirim', timestamp: new Date(Date.now() - 2.8 * 24 * 60 * 60 * 1000).toLocaleString('id-ID') },
-        { status: 'Sedang Dikirim', timestamp: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000).toLocaleString('id-ID') },
-        { status: 'Pesanan Selesai', timestamp: new Date(Date.now() - 2.4 * 24 * 60 * 60 * 1000).toLocaleString('id-ID') }
-      ]
-    }
-  ])
-
+  const orders = ref([])
+  const availableJobs = ref([])
+  const myDriverJobs = ref([])
+  const driverEarnings = ref({
+    total_earnings: 0,
+    completed_count: 0,
+    active_job: null,
+    earning_rule: '',
+  })
   const simulatedDay = ref(1)
 
   async function fetchBuyerOrders() {
@@ -62,36 +33,69 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // Get orders by role (working on top of synchronized local ref)
+  async function fetchAvailableJobs() {
+    try {
+      const data = await apiRequest('/driver/jobs')
+      availableJobs.value = data
+    } catch (err) {
+      console.error('Gagal mengambil daftar pekerjaan:', err)
+    }
+  }
+
+  async function fetchMyDriverJobs() {
+    try {
+      const data = await apiRequest('/driver/my-jobs')
+      myDriverJobs.value = data
+    } catch (err) {
+      console.error('Gagal mengambil riwayat pekerjaan driver:', err)
+    }
+  }
+
+  async function fetchDriverEarnings() {
+    try {
+      const data = await apiRequest('/driver/earnings')
+      driverEarnings.value = data
+    } catch (err) {
+      console.error('Gagal mengambil ringkasan penghasilan:', err)
+    }
+  }
+
+  async function takeJob(orderId) {
+    const data = await apiRequest(`/driver/jobs/${orderId}/take`, { method: 'POST' })
+    availableJobs.value = availableJobs.value.filter((j) => j.order_id !== orderId)
+    myDriverJobs.value.unshift(data.job)
+    driverEarnings.value.active_job = data.job
+    return data
+  }
+
+  async function completeJob(orderId) {
+    const data = await apiRequest(`/driver/jobs/${orderId}/complete`, { method: 'POST' })
+    const idx = myDriverJobs.value.findIndex((j) => j.order_id === orderId)
+    if (idx !== -1) myDriverJobs.value[idx] = data.job
+    driverEarnings.value.active_job = null
+    await fetchDriverEarnings()
+    return data
+  }
+
   function getBuyerOrders(buyerId) {
-    return orders.value.filter(o => o.buyer_id === buyerId)
+    return orders.value.filter((o) => o.buyer_id === buyerId)
   }
 
   function getSellerOrders(storeId) {
-    return orders.value.filter(o => o.store_id === storeId)
+    return orders.value.filter((o) => o.store_id === storeId)
   }
-
-  const availableJobs = computed(() => {
-    return orders.value.filter(o => o.status === 'Menunggu Pengirim')
-  })
 
   function getDriverJobs(driverId) {
-    return orders.value.filter(o => o.driver_id === driverId)
+    return orders.value.filter((o) => o.driver_id === driverId)
   }
 
-  // Create new order (stub, actual checkout is backend-driven)
-  function createOrder(orderData) {
-    return orderData
-  }
-
-  // Handle status updates via API
-  async function transitionOrderStatus(orderId, newStatus, extra = {}) {
+  async function transitionOrderStatus(orderId, newStatus) {
     try {
       const data = await apiRequest(`/orders/${orderId}/status`, {
         method: 'POST',
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus }),
       })
-      const idx = orders.value.findIndex(o => o.id === orderId)
+      const idx = orders.value.findIndex((o) => o.id === orderId)
       if (idx !== -1) {
         orders.value[idx] = data.order
       } else {
@@ -106,13 +110,9 @@ export const useOrdersStore = defineStore('orders', () => {
 
   async function processOrder(orderId) {
     try {
-      const data = await apiRequest(`/orders/${orderId}/process`, {
-        method: 'POST'
-      })
-      const idx = orders.value.findIndex(o => o.id === orderId)
-      if (idx !== -1) {
-        orders.value[idx] = data.order
-      }
+      const data = await apiRequest(`/orders/${orderId}/process`, { method: 'POST' })
+      const idx = orders.value.findIndex((o) => o.id === orderId)
+      if (idx !== -1) orders.value[idx] = data.order
       return true
     } catch (err) {
       console.error('Gagal memproses pesanan:', err)
@@ -120,80 +120,61 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // Admin operational trigger: Simulate Next Day
   function simulateNextDay() {
     simulatedDay.value++
     const authStore = useAuthStore()
 
-    // 1. Process SLA for each active order
-    orders.value.forEach(order => {
-      // Only check orders that are not yet shipped or completed
+    orders.value.forEach((order) => {
       if (order.status === 'Sedang Dikemas' || order.status === 'Menunggu Pengirim') {
-        order.days_in_current_status++
-
-        // SLA threshold:
-        // Instant: 1 day limit
-        // Next Day: 1 day limit
-        // Regular: 2 days limit
-        let limit = 2
-        if (order.delivery_method === 'Instant' || order.delivery_method === 'Next Day') {
-          limit = 1
-        }
+        order.days_in_current_status = (order.days_in_current_status || 0) + 1
+        const limit =
+          order.delivery_method === 'Instant' || order.delivery_method === 'Next Day' ? 1 : 2
 
         if (order.days_in_current_status >= limit) {
-          // Trigger automatic refund / auto-return
           const oldStatus = order.status
           order.status = 'Dikembalikan'
-          order.status_history.push({
+          order.status_history?.push({
             status: `Dikembalikan (SLA Timeout ${oldStatus})`,
-            timestamp: `Simulasi Hari Ke-${simulatedDay.value}`
+            timestamp: `Simulasi Hari Ke-${simulatedDay.value}`,
           })
-
-          // Refund money to buyer's wallet
-          // If refunding, we look up the buyer
-          // Since it's a simulation, if the buyer is currently logged in, update their wallet reactively
-          if (authStore.user && authStore.user.id === order.buyer_id) {
-            const refundedAmount = authStore.user.walletBalance + order.total
-            authStore.updateWalletBalance(refundedAmount)
-          } else {
-            // Find in mockUsers database
-            const dbUser = authStore.mockUsers.find(u => u.id === order.buyer_id)
-            if (dbUser) {
-              dbUser.walletBalance += order.total
-            }
+          if (authStore.user?.id === order.buyer_id) {
+            authStore.updateWalletBalance(authStore.user.walletBalance + order.total)
           }
         }
       } else if (order.status === 'Sedang Dikirim') {
-        // Driver is delivering. Let's auto-complete it on next day simulation
         order.status = 'Pesanan Selesai'
-        order.status_history.push({
+        order.status_history?.push({
           status: 'Pesanan Selesai (Auto-Delivered)',
-          timestamp: `Simulasi Hari Ke-${simulatedDay.value}`
+          timestamp: `Simulasi Hari Ke-${simulatedDay.value}`,
         })
       }
     })
   }
 
-  // Earning computation for drivers
-  function getDriverEarnings(driverId) {
-    const completed = orders.value.filter(o => o.driver_id === driverId && o.status === 'Pesanan Selesai')
-    // Driver earnings: Let's say 80% of delivery fee
-    return completed.reduce((sum, o) => sum + (o.delivery_fee * 0.8), 0)
+  // Kept for backward compat (admin dashboard)
+  function getDriverEarnings() {
+    return driverEarnings.value.total_earnings || 0
   }
 
   return {
     orders,
+    availableJobs,
+    myDriverJobs,
+    driverEarnings,
     simulatedDay,
     fetchBuyerOrders,
     fetchSellerOrders,
+    fetchAvailableJobs,
+    fetchMyDriverJobs,
+    fetchDriverEarnings,
+    takeJob,
+    completeJob,
     getBuyerOrders,
     getSellerOrders,
-    availableJobs,
     getDriverJobs,
-    createOrder,
     transitionOrderStatus,
     processOrder,
     simulateNextDay,
-    getDriverEarnings
+    getDriverEarnings,
   }
 })

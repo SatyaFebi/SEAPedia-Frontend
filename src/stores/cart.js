@@ -24,14 +24,14 @@ export const useCartStore = defineStore('cart', () => {
 
   // Delivery Fees mapping
   const deliveryFees = {
-    'Regular': 9000,
+    Regular: 9000,
     'Next Day': 15000,
-    'Instant': 30000
+    Instant: 30000,
   }
 
   // Calculations
   const subtotal = computed(() => {
-    return items.value.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
+    return items.value.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
   })
 
   const activeVoucher = computed(() => {
@@ -65,7 +65,9 @@ export const useCartStore = defineStore('cart', () => {
   })
 
   const total = computed(() => {
-    return Math.max(0, subtotal.value - discountAmount.value) + finalDeliveryFee.value + ppnAmount.value
+    return (
+      Math.max(0, subtotal.value - discountAmount.value) + finalDeliveryFee.value + ppnAmount.value
+    )
   })
 
   // Functions
@@ -86,8 +88,8 @@ export const useCartStore = defineStore('cart', () => {
         body: JSON.stringify({
           product_id: product.id,
           quantity: qty,
-          force
-        })
+          force,
+        }),
       })
       await fetchCart()
       return { success: true }
@@ -100,7 +102,7 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   async function removeFromCart(productId) {
-    const item = items.value.find(i => i.product.id === productId)
+    const item = items.value.find((i) => i.product.id === productId)
     if (!item) return
     try {
       await apiRequest(`/cart/items/${item.id}`, { method: 'DELETE' })
@@ -111,12 +113,12 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   async function updateQuantity(productId, qty) {
-    const item = items.value.find(i => i.product.id === productId)
+    const item = items.value.find((i) => i.product.id === productId)
     if (!item) return false
     try {
       await apiRequest(`/cart/items/${item.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ quantity: qty })
+        body: JSON.stringify({ quantity: qty }),
       })
       await fetchCart()
       return true
@@ -133,8 +135,8 @@ export const useCartStore = defineStore('cart', () => {
         method: 'POST',
         body: JSON.stringify({
           code: code,
-          subtotal: subtotal.value
-        })
+          subtotal: subtotal.value,
+        }),
       })
       activeDiscount.value = data
       voucherCode.value = data.code
@@ -181,8 +183,8 @@ export const useCartStore = defineStore('cart', () => {
         body: JSON.stringify({
           delivery_method: selectedDelivery.value,
           shipping_address: authStore.user.address || 'Belum ada alamat pengiriman',
-          discount_code: voucherCode.value || null
-        })
+          discount_code: voucherCode.value || null,
+        }),
       })
 
       // Reset local cart variables
@@ -223,6 +225,6 @@ export const useCartStore = defineStore('cart', () => {
     applyVoucher,
     removeVoucher,
     clearCart,
-    submitCheckout
+    submitCheckout,
   }
 })
