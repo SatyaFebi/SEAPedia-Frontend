@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
 import { useOrdersStore } from './orders'
 import { useProductsStore } from './products'
+import { apiRequest } from '../utils/api'
 
 export const useCartStore = defineStore('cart', () => {
   const items = ref([])
