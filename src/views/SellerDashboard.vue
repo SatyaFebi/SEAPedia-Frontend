@@ -87,9 +87,19 @@ const productForm = ref({
   stock: 0,
   description: '',
   image: '',
+  imageFile: null,
   category: 'Kuliner',
 })
+const imagePreview = ref('')
 const crudSuccessMessage = ref('')
+
+function handleFileChange(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  productForm.value.imageFile = file
+  imagePreview.value = URL.createObjectURL(file)
+  productForm.value.image = ''
+}
 
 async function handleSaveStoreName() {
   if (!storeNameInput.value.trim()) return
@@ -119,8 +129,10 @@ function openAddModal() {
     stock: null,
     description: '',
     image: '',
+    imageFile: null,
     category: 'Kuliner',
   }
+  imagePreview.value = ''
   isAddModalOpen.value = true
 }
 
@@ -146,8 +158,10 @@ function openEditModal(product) {
     stock: product.stock,
     description: product.description,
     image: product.image,
+    imageFile: null,
     category: product.category || 'Kuliner',
   }
+  imagePreview.value = product.image || ''
   isEditModalOpen.value = true
 }
 
@@ -770,12 +784,37 @@ const statusBadge = (status) => {
             <textarea v-model="productForm.description" rows="2" class="input"></textarea>
           </div>
           <div>
-            <label class="input-label">URL Gambar</label>
+            <label class="input-label">Gambar Produk</label>
+            <!-- Preview -->
+            <div
+              v-if="imagePreview"
+              class="mb-2 w-full h-36 rounded-xl overflow-hidden border border-[#E5E8EC] bg-[#F4F6F8]"
+            >
+              <img :src="imagePreview" class="w-full h-full object-cover" />
+            </div>
+            <div v-else class="mb-2 w-full h-36 rounded-xl border-2 border-dashed border-[#E5E8EC] bg-[#F4F6F8] flex items-center justify-center text-[#9CA3AF] text-sm">
+              Belum ada gambar
+            </div>
+            <!-- Upload button -->
+            <label
+              class="btn-secondary btn-sm cursor-pointer inline-flex items-center gap-2 mb-2"
+            >
+              📁 Upload File
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                class="hidden"
+                @change="handleFileChange"
+              />
+            </label>
+            <!-- URL fallback -->
+            <p class="text-xs text-[#9CA3AF] mb-1">atau masukkan URL gambar:</p>
             <input
               type="text"
               v-model="productForm.image"
-              class="input"
+              class="input text-sm"
               placeholder="https://..."
+              @input="() => { productForm.imageFile = null; imagePreview = productForm.image }"
             />
           </div>
         </div>
@@ -830,8 +869,37 @@ const statusBadge = (status) => {
             <textarea v-model="productForm.description" rows="2" class="input"></textarea>
           </div>
           <div>
-            <label class="input-label">URL Gambar</label>
-            <input type="text" v-model="productForm.image" class="input" />
+            <label class="input-label">Gambar Produk</label>
+            <!-- Preview -->
+            <div
+              v-if="imagePreview"
+              class="mb-2 w-full h-36 rounded-xl overflow-hidden border border-[#E5E8EC] bg-[#F4F6F8]"
+            >
+              <img :src="imagePreview" class="w-full h-full object-cover" />
+            </div>
+            <div v-else class="mb-2 w-full h-36 rounded-xl border-2 border-dashed border-[#E5E8EC] bg-[#F4F6F8] flex items-center justify-center text-[#9CA3AF] text-sm">
+              Belum ada gambar
+            </div>
+            <!-- Upload button -->
+            <label
+              class="btn-secondary btn-sm cursor-pointer inline-flex items-center gap-2 mb-2"
+            >
+              📁 Upload File
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                class="hidden"
+                @change="handleFileChange"
+              />
+            </label>
+            <!-- URL fallback -->
+            <p class="text-xs text-[#9CA3AF] mb-1">atau masukkan URL gambar:</p>
+            <input
+              type="text"
+              v-model="productForm.image"
+              class="input text-sm"
+              @input="() => { productForm.imageFile = null; imagePreview = productForm.image }"
+            />
           </div>
         </div>
         <div class="px-6 py-4 border-t border-[#E5E8EC] flex justify-end gap-3">
