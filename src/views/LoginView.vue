@@ -138,44 +138,6 @@ function handleQuickLogin(username) {
           </router-link>
         </div>
 
-        <!-- Quick login -->
-        <div class="space-y-3">
-          <div class="flex items-center gap-3">
-            <div class="flex-1 h-px bg-[#E5E8EC]"></div>
-            <span class="text-xs text-[#9CA3AF]">Quick Login (Sandi: password123)</span>
-            <div class="flex-1 h-px bg-[#E5E8EC]"></div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              v-for="mock in mockLoginUsers"
-              :key="mock.username"
-              @click="handleQuickLogin(mock.username)"
-              class="group p-3 bg-white border border-[#E5E8EC] rounded-xl text-left hover:border-primary-300 hover:shadow-xs transition-all cursor-pointer"
-            >
-              <p
-                class="text-sm font-semibold text-[#0D1117] group-hover:text-primary-700 transition-colors truncate"
-              >
-                {{ mock.name.split(' ')[0] }}
-              </p>
-              <p class="text-xs text-[#9CA3AF] mt-0.5">{{ mock.username }}</p>
-              <div class="flex flex-wrap gap-1 mt-2">
-                <span
-                  v-for="role in mock.roles"
-                  :key="role"
-                  class="badge text-[9px] px-1.5 py-0.5"
-                  :class="{
-                    'badge-amber': role === 'Buyer',
-                    'badge-blue': role === 'Seller',
-                    'badge-green': role === 'Driver',
-                    'badge-gray': role === 'Admin',
-                  }"
-                  >{{ role }}</span
-                >
-              </div>
-            </button>
-          </div>
-        </div>
-
         <router-link
           to="/"
           class="block text-center text-xs text-[#9CA3AF] hover:text-[#374151] transition-colors"
