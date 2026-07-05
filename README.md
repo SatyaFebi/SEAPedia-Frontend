@@ -100,6 +100,24 @@ The locked store name is always shown in the cart panel so the user knows which 
 
 ---
 
+## Product Image Upload
+
+The seller dashboard (`SellerDashboard.vue`) supports two methods for product images:
+
+| Method | How | Notes |
+|---|---|---|
+| **File upload** | Click "📁 Upload File" in the Add/Edit modal | Sends `multipart/form-data` with `image_file`. Stored server-side and served from `/storage/products/`. |
+| **URL** | Type a URL in the text input below the upload button | Sends `application/json` with `image` string. |
+
+**Logic in `stores/products.js`:**
+- If `productForm.imageFile` is set → uses `fetch` with `FormData` (bypasses the JSON `apiRequest` helper to avoid `Content-Type: application/json` override).
+- If only `productForm.image` (URL) is set → uses `apiRequest` with JSON body as before.
+- `toRaw()` is applied to the `File` object before appending to `FormData` to unwrap Vue's reactive Proxy.
+
+**For updates**, the frontend calls `POST /api/products/{id}` (multipart alias) instead of `PUT` because browsers cannot send `multipart/form-data` with the `PUT` method reliably.
+
+---
+
 ## Folder Structure
 
 ```
@@ -117,7 +135,7 @@ src/
     auth.js                User auth state, login/logout, role management
     cart.js                Cart state, single-store enforcement, checkout logic
     orders.js              Order fetching and status tracking
-    products.js            Product listing
+    products.js            Product listing, add/update/delete with image upload support
     reviews.js             Public reviews
   router/
     index.js               Routes with navigation guards (auth + role checks)
