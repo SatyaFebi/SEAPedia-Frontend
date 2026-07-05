@@ -22,6 +22,11 @@ function selectRole(role) {
   }
 }
 
+async function handleLogout() {
+  await authStore.logout()
+  router.push({ name: 'login' })
+}
+
 const roleConfig = {
   Buyer: { icon: '🛒', desc: 'Beli barang, isi wallet, lacak pesanan.' },
   Seller: { icon: '🏪', desc: 'Kelola toko, tambah produk, proses pesanan.' },
@@ -79,7 +84,7 @@ const roleConfig = {
 
       <div class="text-center">
         <button
-          @click="authStore.logout(); router.push('/login')"
+          @click="handleLogout"
           class="text-xs text-[#9CA3AF] hover:text-[#374151] transition-colors cursor-pointer"
         >
           Ganti akun lain
