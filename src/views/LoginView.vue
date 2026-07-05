@@ -14,12 +14,12 @@ const error = ref('')
 const isLoading = ref(false)
 
 // Quick login helper profiles
-const mockLoginUsers = [
-  { name: 'Budi Santoso', username: 'budi', roles: ['Buyer', 'Seller'] },
-  { name: 'Agus Setiawan', username: 'agus', roles: ['Buyer', 'Seller', 'Driver'] },
-  { name: 'Siti Rahma', username: 'siti', roles: ['Buyer', 'Driver'] },
-  { name: 'Super Admin', username: 'admin', roles: ['Admin'] },
-]
+// const mockLoginUsers = [
+//   { name: 'Budi Santoso', username: 'budi', roles: ['Buyer', 'Seller'] },
+//   { name: 'Agus Setiawan', username: 'agus', roles: ['Buyer', 'Seller', 'Driver'] },
+//   { name: 'Siti Rahma', username: 'siti', roles: ['Buyer', 'Driver'] },
+//   { name: 'Super Admin', username: 'admin', roles: ['Admin'] },
+// ]
 
 async function handleLogin() {
   error.value = ''
@@ -102,7 +102,7 @@ function handleQuickLogin(username) {
             id="username"
             v-model="usernameInput"
             label="Username / Email"
-            placeholder="cth. budi, siti, agus, admin"
+            placeholder="Masukkan username atau email Anda"
             required
           />
 

@@ -143,8 +143,18 @@ function getTimelineStepClass(orderStatus, step) {
     if (stepIndex === 3) return 'bg-accent-rose-50 border-accent-rose-200 text-accent-rose-600'
     return 'bg-[#F4F6F8] border-[#E5E8EC] text-[#9CA3AF] opacity-50'
   }
-  if (orderIndex >= stepIndex) return 'bg-primary-600 border-primary-500 text-white'
+  if (orderIndex >= stepIndex) return 'bg-primary-50 border-primary-200 text-primary-600'
   return 'bg-[#F4F6F8] border-[#E5E8EC] text-[#9CA3AF]'
+}
+
+function isTimelineStepActive(orderStatus, step) {
+  const steps = ['Sedang Dikemas', 'Menunggu Pengirim', 'Sedang Dikirim', 'Pesanan Selesai']
+  const orderIndex = steps.indexOf(orderStatus)
+  const stepIndex = steps.indexOf(step)
+  if (orderStatus.includes('Dikembalikan')) {
+    return stepIndex === 3
+  }
+  return orderIndex >= stepIndex
 }
 
 onMounted(async () => {
@@ -613,28 +623,37 @@ onMounted(async () => {
               <div class="grid grid-cols-4 gap-2 relative">
                 <div class="absolute top-3.5 left-6 right-6 h-0.5 bg-[#E5E8EC] -z-10"></div>
                 <div
-                  v-for="(step, label) in {
+                  v-for="(emoji, statusName) in {
                     'Sedang Dikemas': '📦',
                     'Menunggu Pengirim': '🏪',
                     'Sedang Dikirim': '🛵',
                     'Pesanan Selesai': '🏁',
                   }"
-                  :key="step"
+                  :key="statusName"
                   class="text-center"
                 >
                   <div
                     class="w-7 h-7 rounded-full border-2 flex items-center justify-center mx-auto text-xs transition-colors"
-                    :class="getTimelineStepClass(order.status, step)"
+                    :class="getTimelineStepClass(order.status, statusName)"
                   >
-                    {{ label }}
+                    {{ emoji }}
                   </div>
-                  <p class="text-[9px] text-[#9CA3AF] mt-1">
+                  <p
+                    class="text-[9px] mt-1 transition-colors"
+                    :class="
+                      order.status.includes('Dikembalikan') && statusName === 'Pesanan Selesai'
+                        ? 'text-accent-rose-600 font-semibold'
+                        : isTimelineStepActive(order.status, statusName)
+                          ? 'text-primary-600 font-semibold'
+                          : 'text-[#9CA3AF]'
+                    "
+                  >
                     {{
-                      step === 'Sedang Dikemas'
+                      statusName === 'Sedang Dikemas'
                         ? 'Dikemas'
-                        : step === 'Menunggu Pengirim'
+                        : statusName === 'Menunggu Pengirim'
                           ? 'Siap Ambil'
-                          : step === 'Sedang Dikirim'
+                          : statusName === 'Sedang Dikirim'
                             ? 'Dikirim'
                             : order.status.includes('Dikembalikan')
                               ? 'Dikembalikan'
