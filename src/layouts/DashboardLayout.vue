@@ -128,18 +128,20 @@ const roleConfig = {
             <span class="text-[#9CA3AF]">▾</span>
           </button>
           <div
-            class="absolute bottom-full left-0 right-0 mb-1.5 hidden group-hover:block bg-white border border-[#E5E8EC] rounded-xl shadow-lg z-20 overflow-hidden p-1"
+            class="absolute bottom-full left-0 right-0 pb-1.5 hidden group-hover:block z-20"
           >
-            <button
-              v-for="role in user.roles"
-              :key="role"
-              @click="handleSwitchRole(role)"
-              class="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-[#F4F6F8] flex items-center justify-between transition-colors"
-              :class="activeRole === role ? 'text-primary-700 font-semibold' : 'text-[#374151]'"
-            >
-              <span>{{ role }}</span>
-              <span v-if="activeRole === role" class="text-primary-600">✓</span>
-            </button>
+            <div class="bg-white border border-[#E5E8EC] rounded-xl shadow-lg overflow-hidden p-1">
+              <button
+                v-for="role in user.roles"
+                :key="role"
+                @click="handleSwitchRole(role)"
+                class="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-[#F4F6F8] flex items-center justify-between transition-colors"
+                :class="activeRole === role ? 'text-primary-700 font-semibold' : 'text-[#374151]'"
+              >
+                <span>{{ role }}</span>
+                <span v-if="activeRole === role" class="text-primary-600">✓</span>
+              </button>
+            </div>
           </div>
         </div>
 

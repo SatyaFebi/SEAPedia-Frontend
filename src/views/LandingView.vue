@@ -71,6 +71,19 @@ function openDetailModal(product) {
   isDetailModalOpen.value = true
 }
 
+function handleQtyInput() {
+  if (qtyToAdd.value === '' || qtyToAdd.value === null) return
+  if (qtyToAdd.value > activeDetailProduct.value.stock) {
+    qtyToAdd.value = activeDetailProduct.value.stock
+  }
+}
+
+function handleQtyBlur() {
+  if (!qtyToAdd.value || qtyToAdd.value < 1) {
+    qtyToAdd.value = 1
+  }
+}
+
 async function handleAddToCart() {
   if (!authStore.isLoggedIn) {
     alert('Anda harus login terlebih dahulu sebagai Buyer.')
@@ -81,6 +94,7 @@ async function handleAddToCart() {
     alert('Anda harus memilih peran aktif sebagai Buyer untuk menambah produk ke keranjang.')
     return
   }
+  qtyToAdd.value = Math.max(1, Math.min(activeDetailProduct.value.stock, Number(qtyToAdd.value) || 1))
   const result = await cartStore.addToCart(activeDetailProduct.value, qtyToAdd.value)
   if (result.success) {
     isDetailModalOpen.value = false
@@ -95,6 +109,7 @@ async function handleAddToCart() {
 }
 
 async function handleForceClearCartAndAdd() {
+  qtyToAdd.value = Math.max(1, Math.min(pendingProduct.value.stock, Number(qtyToAdd.value) || 1))
   await cartStore.clearCart()
   const result = await cartStore.addToCart(pendingProduct.value, qtyToAdd.value)
   isConflictOpen.value = false
@@ -435,16 +450,22 @@ const categories = ['Semua', 'Kuliner', 'Otomotif']
                     class="flex items-center gap-1 bg-[#F4F6F8] border border-[#E5E8EC] rounded-lg overflow-hidden"
                   >
                     <button
-                      @click="qtyToAdd = Math.max(1, qtyToAdd - 1)"
+                      @click="qtyToAdd = Math.max(1, Number(qtyToAdd) - 1)"
                       class="px-3 py-1.5 text-[#6B7280] hover:text-[#0D1117] hover:bg-[#E5E8EC] transition-colors cursor-pointer font-medium text-sm"
                     >
                       −
                     </button>
-                    <span class="px-3 text-sm font-semibold text-[#0D1117] min-w-8 text-center">{{
-                      qtyToAdd
-                    }}</span>
+                    <input
+                      type="number"
+                      v-model.number="qtyToAdd"
+                      @input="handleQtyInput"
+                      @blur="handleQtyBlur"
+                      min="1"
+                      :max="activeDetailProduct.stock"
+                      class="w-12 text-center text-sm font-semibold text-[#0D1117] bg-transparent border-0 focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                     <button
-                      @click="qtyToAdd = Math.min(activeDetailProduct.stock, qtyToAdd + 1)"
+                      @click="qtyToAdd = Math.min(activeDetailProduct.stock, Number(qtyToAdd) + 1)"
                       class="px-3 py-1.5 text-[#6B7280] hover:text-[#0D1117] hover:bg-[#E5E8EC] transition-colors cursor-pointer font-medium text-sm"
                     >
                       +
