@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
+import Skeleton from '../components/Skeleton.vue'
+
 
 const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
@@ -84,7 +86,18 @@ const statusColor = {
 <template>
   <div class="space-y-6 text-[#374151]">
     <!-- Stats Row -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="stat-card sm:col-span-2 space-y-2 py-3.5">
+        <Skeleton width="30%" height="1.25rem" />
+        <Skeleton width="70%" height="1rem" />
+      </div>
+      <div class="stat-card space-y-2 py-3.5">
+        <Skeleton width="50%" height="0.75rem" />
+        <Skeleton width="60%" height="1.5rem" />
+        <Skeleton width="40%" height="0.75rem" />
+      </div>
+    </div>
+    <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div class="stat-card sm:col-span-2">
         <p class="font-display font-bold text-[#0D1117] text-lg">Halo, {{ user?.name }}! 🚴</p>
         <p class="text-sm text-[#6B7280] mt-0.5">
@@ -100,6 +113,7 @@ const statusColor = {
         <p class="text-xs text-[#9CA3AF] mt-1">{{ earnings.completed_count }} pengiriman selesai</p>
       </div>
     </div>
+
 
     <!-- Alert -->
     <transition name="fade">
@@ -117,7 +131,8 @@ const statusColor = {
     </transition>
 
     <!-- Active Job Banner -->
-    <div v-if="activeJob" class="card p-5 border-l-4 border-indigo-500 bg-indigo-50/30 space-y-3">
+    <div v-if="!loading && activeJob" class="card p-5 border-l-4 border-indigo-500 bg-indigo-50/30 space-y-3">
+
       <div class="flex items-center justify-between">
         <h3 class="font-display font-semibold text-indigo-700">📦 Sedang Dalam Pengiriman</h3>
         <span class="text-xs text-[#9CA3AF]">{{ activeJob.delivery_method }}</span>
@@ -178,13 +193,34 @@ const statusColor = {
         <span class="text-[#9CA3AF] font-normal text-sm">(Menunggu Driver)</span>
       </h3>
 
-      <div v-if="loading" class="py-10 text-center text-sm text-[#9CA3AF]">
-        Memuat pekerjaan tersedia...
+      <div v-if="loading" class="space-y-4">
+        <div v-for="i in 2" :key="i" class="border border-[#E5E8EC] rounded-xl p-5 space-y-4 bg-white">
+          <div class="flex items-center justify-between pb-3 border-b border-[#E5E8EC]">
+            <div class="flex items-center gap-2">
+              <Skeleton width="4rem" height="1.25rem" />
+              <Skeleton width="5rem" height="1rem" />
+            </div>
+            <Skeleton width="5rem" height="1.25rem" />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <Skeleton width="30%" height="0.75rem" />
+              <Skeleton width="60%" height="1.25rem" />
+            </div>
+            <div class="space-y-2">
+              <Skeleton width="30%" height="0.75rem" />
+              <Skeleton width="70%" height="1.25rem" />
+              <Skeleton width="90%" height="1rem" />
+            </div>
+          </div>
+        </div>
       </div>
+
       <div v-else-if="availableJobs.length === 0" class="py-10 text-center text-sm text-[#9CA3AF]">
         <div class="text-3xl mb-3">📭</div>
         Tidak ada pekerjaan tersedia saat ini. Coba refresh nanti.
       </div>
+
 
       <div v-else class="space-y-4">
         <div
@@ -242,13 +278,33 @@ const statusColor = {
           Riwayat Pengiriman
         </h3>
 
-        <div v-if="completedJobs.length === 0" class="py-8 text-center text-sm text-[#9CA3AF]">
-          <div class="text-3xl mb-3">📋</div>
-          Belum ada pengiriman yang selesai.
+        <!-- Skeleton Loading for History -->
+        <div v-if="loading" class="space-y-3">
+          <div v-for="i in 2" :key="i" class="flex justify-between items-center p-4 rounded-xl bg-white border border-[#E5E8EC] text-xs">
+            <div class="space-y-2 flex-1">
+              <div class="flex gap-2">
+                <Skeleton width="6rem" height="1rem" />
+                <Skeleton width="3rem" height="1rem" />
+              </div>
+              <Skeleton width="8rem" height="0.875rem" />
+              <Skeleton width="12rem" height="0.75rem" />
+            </div>
+            <div class="text-right space-y-1.5 shrink-0 ml-4">
+              <Skeleton width="4rem" height="1.25rem" />
+              <Skeleton width="6rem" height="0.75rem" />
+            </div>
+          </div>
         </div>
 
-        <div v-else class="space-y-3">
-          <div
+        <template v-else>
+          <div v-if="completedJobs.length === 0" class="py-8 text-center text-sm text-[#9CA3AF]">
+            <div class="text-3xl mb-3">📋</div>
+            Belum ada pengiriman yang selesai.
+          </div>
+
+          <div v-else class="space-y-3">
+            <div
+
             v-for="job in completedJobs"
             :key="job.job_id"
             class="flex items-start justify-between p-4 rounded-xl bg-[#F9FAFB] border border-[#E5E8EC] hover:border-[#D1D5DB] transition-all"
@@ -278,6 +334,7 @@ const statusColor = {
             </div>
           </div>
         </div>
+        </template>
       </div>
 
       <!-- Earnings Summary -->

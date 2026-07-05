@@ -5,6 +5,8 @@ import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 import { useOrdersStore } from '../stores/orders'
 import { apiRequest } from '../utils/api'
+import Skeleton from '../components/Skeleton.vue'
+
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
@@ -26,19 +28,26 @@ const checkoutSuccess = ref('')
 
 const walletTransactions = ref([])
 const activeTab = ref('dashboard')
+const isLoading = ref(true)
+const isReportLoading = ref(false)
 const reportData = ref({
   summary: { total_spending: 0, total_orders: 0, completed_orders: 0 },
   orders: [],
 })
 
+
 async function fetchReportData() {
+  isReportLoading.value = true
   try {
     const data = await apiRequest('/reports/buyer')
     reportData.value = data
   } catch (err) {
     console.error('Gagal mengambil laporan belanja:', err)
+  } finally {
+    isReportLoading.value = false
   }
 }
+
 
 watch(activeTab, (newTab) => {
   if (newTab === 'report') {
@@ -139,12 +148,19 @@ function getTimelineStepClass(orderStatus, step) {
 }
 
 onMounted(async () => {
-  await authStore.checkAuth()
-  await cartStore.fetchCart()
-  await ordersStore.fetchBuyerOrders()
-  await fetchWalletData()
-  newAddress.value = authStore.user?.address || ''
+  try {
+    await authStore.checkAuth()
+    await cartStore.fetchCart()
+    await ordersStore.fetchBuyerOrders()
+    await fetchWalletData()
+    newAddress.value = authStore.user?.address || ''
+  } catch (err) {
+    console.error('Error on mounting buyer dashboard:', err)
+  } finally {
+    isLoading.value = false
+  }
 })
+
 </script>
 
 <template>
@@ -181,91 +197,120 @@ onMounted(async () => {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Welcome + Address -->
         <div class="card p-5 md:col-span-2 space-y-1">
-          <h2 class="font-display font-bold text-[#0D1117] text-lg">Halo, {{ user?.name }}!</h2>
-          <p class="text-sm text-[#6B7280]">
-            Kelola wallet, keranjang belanja, dan lacak pesanan Anda.
-          </p>
-          <div class="mt-3 pt-3 border-t border-[#E5E8EC]">
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="section-label">Alamat Pengiriman</span>
-              <button
-                @click="isEditingAddress = !isEditingAddress"
-                class="text-xs text-primary-600 hover:text-primary-700 cursor-pointer font-medium"
-              >
-                {{ isEditingAddress ? 'Batal' : 'Ubah' }}
-              </button>
+          <div v-if="isLoading" class="space-y-3 py-1">
+            <Skeleton width="40%" height="1.5rem" />
+            <Skeleton width="60%" height="1rem" />
+            <div class="pt-3 border-t border-[#E5E8EC] space-y-2">
+              <Skeleton width="30%" height="0.75rem" />
+              <Skeleton width="100%" height="1.25rem" />
             </div>
-            <div v-if="isEditingAddress" class="flex gap-2">
-              <input type="text" v-model="newAddress" class="input flex-1 text-sm" />
-              <button @click="handleSaveAddress" class="btn-primary btn-sm">Simpan</button>
-            </div>
-            <p v-else class="text-sm text-[#374151] leading-relaxed">{{ user?.address }}</p>
-            <p v-if="addressSuccess" class="text-primary-600 text-xs mt-1">
-              Alamat berhasil diperbarui!
-            </p>
           </div>
+          <template v-else>
+            <h2 class="font-display font-bold text-[#0D1117] text-lg">Halo, {{ user?.name }}!</h2>
+            <p class="text-sm text-[#6B7280]">
+              Kelola wallet, keranjang belanja, dan lacak pesanan Anda.
+            </p>
+            <div class="mt-3 pt-3 border-t border-[#E5E8EC]">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="section-label">Alamat Pengiriman</span>
+                <button
+                  @click="isEditingAddress = !isEditingAddress"
+                  class="text-xs text-primary-600 hover:text-primary-700 cursor-pointer font-medium"
+                >
+                  {{ isEditingAddress ? 'Batal' : 'Ubah' }}
+                </button>
+              </div>
+              <div v-if="isEditingAddress" class="flex gap-2">
+                <input type="text" v-model="newAddress" class="input flex-1 text-sm" />
+                <button @click="handleSaveAddress" class="btn-primary btn-sm">Simpan</button>
+              </div>
+              <p v-else class="text-sm text-[#374151] leading-relaxed">{{ user?.address }}</p>
+              <p v-if="addressSuccess" class="text-primary-600 text-xs mt-1">
+                Alamat berhasil diperbarui!
+              </p>
+            </div>
+          </template>
         </div>
+
 
         <!-- Wallet + Top up -->
         <div class="card p-5 space-y-4">
-          <div>
-            <p class="section-label">Saldo Wallet</p>
-            <p class="font-display font-bold text-[#0D1117] text-2xl mt-1">
-              Rp{{ user?.walletBalance?.toLocaleString('id-ID') || '0' }}
-            </p>
-          </div>
-          <div class="space-y-2">
-            <input
-              type="number"
-              v-model.number="topUpAmount"
-              class="input text-sm"
-              min="10000"
-              step="50000"
-            />
-            <div class="flex gap-2">
-              <button @click="topUpAmount = 50000" class="btn-ghost btn-sm flex-1">50rb</button>
-              <button @click="topUpAmount = 250000" class="btn-ghost btn-sm flex-1">250rb</button>
-              <button @click="topUpAmount = 1000000" class="btn-ghost btn-sm flex-1">1jt</button>
+          <div v-if="isLoading" class="space-y-4 py-1">
+            <div class="space-y-1">
+              <Skeleton width="30%" height="0.75rem" />
+              <Skeleton width="70%" height="1.75rem" />
             </div>
-            <button @click="handleTopUp" class="btn-primary w-full justify-center">Top Up</button>
-            <p v-if="topUpSuccess" class="text-primary-600 text-xs text-center">
-              Saldo berhasil ditambahkan!
-            </p>
+            <div class="space-y-2">
+              <Skeleton width="100%" height="2rem" />
+              <div class="flex gap-2">
+                <Skeleton width="33%" height="1.5rem" />
+                <Skeleton width="33%" height="1.5rem" />
+                <Skeleton width="33%" height="1.5rem" />
+              </div>
+              <Skeleton width="100%" height="2rem" />
+            </div>
           </div>
+          <template v-else>
+            <div>
+              <p class="section-label">Saldo Wallet</p>
+              <p class="font-display font-bold text-[#0D1117] text-2xl mt-1">
+                Rp{{ user?.walletBalance?.toLocaleString('id-ID') || '0' }}
+              </p>
+            </div>
+            <div class="space-y-2">
+              <input
+                type="number"
+                v-model.number="topUpAmount"
+                class="input text-sm"
+                min="10000"
+                step="50000"
+              />
+              <div class="flex gap-2">
+                <button @click="topUpAmount = 50000" class="btn-ghost btn-sm flex-1">50rb</button>
+                <button @click="topUpAmount = 250000" class="btn-ghost btn-sm flex-1">250rb</button>
+                <button @click="topUpAmount = 1000000" class="btn-ghost btn-sm flex-1">1jt</button>
+              </div>
+              <button @click="handleTopUp" class="btn-primary w-full justify-center">Top Up</button>
+              <p v-if="topUpSuccess" class="text-primary-600 text-xs text-center">
+                Saldo berhasil ditambahkan!
+              </p>
+            </div>
 
-          <!-- Wallet Top Up History / Transactions -->
-          <div class="mt-4 pt-3 border-t border-[#E5E8EC] space-y-2">
-            <p class="section-label text-xs">Riwayat Transaksi Wallet</p>
-            <div
-              v-if="walletTransactions.length === 0"
-              class="text-xs text-[#9CA3AF] text-center py-2"
-            >
-              Belum ada riwayat transaksi.
-            </div>
-            <div v-else class="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+            <!-- Wallet Top Up History / Transactions -->
+            <div class="mt-4 pt-3 border-t border-[#E5E8EC] space-y-2">
+              <p class="section-label text-xs">Riwayat Transaksi Wallet</p>
               <div
-                v-for="tx in walletTransactions"
-                :key="tx.id"
-                class="flex justify-between items-center text-xs p-2 rounded bg-[#F4F6F8] border border-[#E5E8EC]"
+                v-if="walletTransactions.length === 0"
+                class="text-xs text-[#9CA3AF] text-center py-2"
               >
-                <div class="min-w-0 flex-1 pr-2">
-                  <span
-                    class="font-semibold text-[11px]"
-                    :class="tx.amount > 0 ? 'text-primary-600' : 'text-accent-rose-600'"
-                  >
-                    {{ tx.amount > 0 ? '+' : '' }}Rp{{ tx.amount.toLocaleString('id-ID') }}
-                  </span>
-                  <p class="text-[9px] text-[#9CA3AF] truncate" :title="tx.description">
-                    {{ tx.description }}
-                  </p>
+                Belum ada riwayat transaksi.
+              </div>
+              <div v-else class="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                <div
+                  v-for="tx in walletTransactions"
+                  :key="tx.id"
+                  class="flex justify-between items-center text-xs p-2 rounded bg-[#F4F6F8] border border-[#E5E8EC]"
+                >
+                  <div class="min-w-0 flex-1 pr-2">
+                    <span
+                      class="font-semibold text-[11px]"
+                      :class="tx.amount > 0 ? 'text-primary-600' : 'text-accent-rose-600'"
+                    >
+                      {{ tx.amount > 0 ? '+' : '' }}Rp{{ tx.amount.toLocaleString('id-ID') }}
+                    </span>
+                    <p class="text-[9px] text-[#9CA3AF] truncate" :title="tx.description">
+                      {{ tx.description }}
+                    </p>
+                  </div>
+                  <span class="text-[9px] font-mono text-[#9CA3AF] shrink-0">{{
+                    tx.created_at
+                  }}</span>
                 </div>
-                <span class="text-[9px] font-mono text-[#9CA3AF] shrink-0">{{
-                  tx.created_at
-                }}</span>
               </div>
             </div>
-          </div>
+          </template>
         </div>
+
       </div>
 
       <!-- Cart + Checkout -->
@@ -277,14 +322,28 @@ onMounted(async () => {
           }}</span>
         </div>
 
-        <!-- Empty -->
-        <div v-if="cartStore.items.length === 0" class="py-10 text-center space-y-3">
-          <p class="text-sm text-[#9CA3AF]">Keranjang Anda kosong.</p>
-          <router-link to="/" class="btn-secondary btn-sm inline-flex">Cari Produk</router-link>
+        <!-- Skeleton Loader for Cart -->
+        <div v-if="isLoading" class="space-y-3">
+          <div v-for="i in 2" :key="i" class="flex items-center gap-4 p-3 rounded-xl bg-[#F4F6F8] border border-[#E5E8EC]">
+            <Skeleton width="3rem" height="3rem" class="shrink-0" />
+            <div class="flex-1 space-y-1.5">
+              <Skeleton width="40%" height="1rem" />
+              <Skeleton width="20%" height="0.75rem" />
+            </div>
+            <Skeleton width="4rem" height="1.75rem" />
+          </div>
         </div>
 
-        <!-- Items -->
-        <div v-else class="space-y-6">
+        <template v-else>
+          <!-- Empty -->
+          <div v-if="cartStore.items.length === 0" class="py-10 text-center space-y-3">
+            <p class="text-sm text-[#9CA3AF]">Keranjang Anda kosong.</p>
+            <router-link to="/" class="btn-secondary btn-sm inline-flex">Cari Produk</router-link>
+          </div>
+
+          <!-- Items -->
+          <div v-else class="space-y-6">
+
           <div class="space-y-3 max-h-64 overflow-y-auto">
             <div
               v-for="item in cartStore.items"
@@ -444,7 +503,8 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-      </div>
+      </template>
+    </div>
 
       <!-- Order tracking -->
       <div class="card p-6 space-y-5">
@@ -452,11 +512,30 @@ onMounted(async () => {
           Lacak Pesanan
         </h3>
 
-        <div v-if="orders.length === 0" class="py-8 text-center text-sm text-[#9CA3AF]">
-          Belum ada pesanan. Mulai belanja dari katalog!
+        <!-- Skeleton Loader for Orders -->
+        <div v-if="isLoading" class="space-y-4">
+          <div v-for="i in 2" :key="i" class="border border-[#E5E8EC] rounded-xl p-5 space-y-4 bg-[#FAFAFA]">
+            <div class="flex justify-between items-center pb-3 border-b border-[#E5E8EC]">
+              <div class="flex items-center gap-2">
+                <Skeleton width="4rem" height="1rem" />
+                <Skeleton width="6rem" height="1rem" />
+              </div>
+              <Skeleton width="5rem" height="1.25rem" />
+            </div>
+            <div class="space-y-2">
+              <Skeleton width="70%" height="1rem" />
+              <Skeleton width="30%" height="0.875rem" />
+            </div>
+          </div>
         </div>
 
-        <div v-else class="space-y-5">
+        <template v-else>
+          <div v-if="orders.length === 0" class="py-8 text-center text-sm text-[#9CA3AF]">
+            Belum ada pesanan. Mulai belanja dari katalog!
+          </div>
+
+          <div v-else class="space-y-5">
+
           <div
             v-for="order in orders"
             :key="order.id"
@@ -614,13 +693,20 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
-
+  </div>
+  
     <!-- Spending Report Tab -->
     <div v-else class="space-y-6">
       <!-- Report Summary cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div v-if="isReportLoading" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div v-for="i in 3" :key="i" class="stat-card space-y-2">
+          <Skeleton width="50%" height="0.75rem" />
+          <Skeleton width="70%" height="1.75rem" />
+        </div>
+      </div>
+      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="stat-card">
           <p class="stat-label">Total Pengeluaran</p>
           <p class="stat-value text-primary-600">
@@ -643,9 +729,27 @@ onMounted(async () => {
           Detail Transaksi Belanja
         </h3>
 
-        <div v-if="reportData.orders.length === 0" class="py-8 text-center text-sm text-[#9CA3AF]">
-          Belum ada riwayat transaksi belanja.
+        <div v-if="isReportLoading" class="space-y-4">
+          <div v-for="i in 2" :key="i" class="border border-[#E5E8EC] rounded-xl p-5 bg-[#FAFAFA] space-y-3">
+            <div class="flex justify-between items-center pb-2 border-b border-[#E5E8EC]">
+              <div class="flex gap-2">
+                <Skeleton width="5rem" height="1rem" />
+                <Skeleton width="8rem" height="1rem" />
+              </div>
+              <Skeleton width="5rem" height="1rem" />
+            </div>
+            <div class="space-y-1.5">
+              <Skeleton width="60%" height="0.875rem" />
+              <Skeleton width="40%" height="0.875rem" />
+            </div>
+          </div>
         </div>
+
+        <template v-else>
+          <div v-if="reportData.orders.length === 0" class="py-8 text-center text-sm text-[#9CA3AF]">
+            Belum ada riwayat transaksi belanja.
+          </div>
+
 
         <div v-else class="space-y-5">
           <div
@@ -727,7 +831,8 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
+</div>
 </template>

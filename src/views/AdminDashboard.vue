@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { apiRequest } from '../utils/api'
+import Skeleton from '../components/Skeleton.vue'
+
 
 const activeTab = ref('overview')
 
@@ -35,6 +37,8 @@ const promoForm = ref({
 
 const alertMessage = ref({ text: '', type: '' })
 const isSimulating = ref(false)
+const isLoading = ref(true)
+
 
 async function fetchDashboard() {
   try {
@@ -81,14 +85,22 @@ async function fetchPromos() {
 
 async function loadDataForTab(tab) {
   activeTab.value = tab
-  if (tab === 'overview') await fetchDashboard()
-  else if (tab === 'orders') await fetchOrders()
-  else if (tab === 'delivery') await fetchDeliveryJobs()
-  else if (tab === 'discounts') {
-    await fetchVouchers()
-    await fetchPromos()
+  isLoading.value = true
+  try {
+    if (tab === 'overview') await fetchDashboard()
+    else if (tab === 'orders') await fetchOrders()
+    else if (tab === 'delivery') await fetchDeliveryJobs()
+    else if (tab === 'discounts') {
+      await fetchVouchers()
+      await fetchPromos()
+    }
+  } catch (e) {
+    console.error('Gagal memuat data tab:', e)
+  } finally {
+    isLoading.value = false
   }
 }
+
 
 async function handleSimulateNextDay() {
   isSimulating.value = true
@@ -147,16 +159,17 @@ function getStatusBadge(status) {
   return 'badge-gray'
 }
 
-onMounted(() => {
+onMounted(async () => {
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 7)
   const defaultDate = tomorrow.toISOString().slice(0, 10)
   voucherForm.value.expiry_date = defaultDate
   promoForm.value.expiry_date = defaultDate
   
-  loadDataForTab('overview')
+  await loadDataForTab('overview')
 })
 </script>
+
 
 <template>
   <div class="space-y-6 text-[#374151]">
@@ -215,7 +228,13 @@ onMounted(() => {
 
     <!-- Tab Content: Overview -->
     <div v-if="activeTab === 'overview'" class="space-y-6">
-      <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-if="isLoading" class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="i in 6" :key="i" class="stat-card space-y-2">
+          <Skeleton width="40%" height="0.75rem" />
+          <Skeleton width="60%" height="1.5rem" />
+        </div>
+      </div>
+      <div v-else class="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div class="stat-card">
           <p class="stat-label">Total Pengguna</p>
           <p class="stat-value">{{ dashboardStats.total_users }}</p>
@@ -245,6 +264,7 @@ onMounted(() => {
       </div>
     </div>
 
+
     <!-- Tab Content: Orders -->
     <div v-if="activeTab === 'orders'" class="card p-6">
       <h3 class="font-display font-semibold text-[#0D1117] mb-4">Semua Pesanan</h3>
@@ -261,9 +281,30 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody class="divide-y divide-[#E5E8EC]">
-            <tr v-if="orders.length === 0">
+            <tr v-if="isLoading">
+              <td colspan="6" class="py-4 px-3">
+                <div class="space-y-3">
+                  <div v-for="i in 3" :key="i" class="flex justify-between items-center py-2 border-b border-[#E5E8EC] last:border-b-0">
+                    <Skeleton width="4rem" height="1rem" />
+                    <div class="space-y-1 flex-1 px-4">
+                      <Skeleton width="50%" height="0.875rem" />
+                      <Skeleton width="30%" height="0.75rem" />
+                    </div>
+                    <Skeleton width="5rem" height="1rem" class="shrink-0" />
+                    <Skeleton width="4rem" height="1rem" class="shrink-0 ml-4" />
+                    <div class="space-y-1 shrink-0 ml-4 text-right">
+                      <Skeleton width="6rem" height="0.875rem" />
+                      <Skeleton width="4rem" height="0.75rem" />
+                    </div>
+                    <Skeleton width="6rem" height="1.25rem" class="shrink-0 ml-4" />
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr v-else-if="orders.length === 0">
               <td colspan="6" class="py-8 text-center text-sm text-[#9CA3AF]">Belum ada pesanan.</td>
             </tr>
+
             <tr v-for="order in orders" :key="order.id" class="hover:bg-[#F4F6F8]">
               <td class="py-3 px-3 font-mono text-xs">{{ order.id.substring(0,8) }}</td>
               <td class="py-3 px-3">
@@ -302,9 +343,26 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody class="divide-y divide-[#E5E8EC]">
-            <tr v-if="deliveryJobs.length === 0">
+            <tr v-if="isLoading">
+              <td colspan="5" class="py-4 px-3">
+                <div class="space-y-3">
+                  <div v-for="i in 3" :key="i" class="flex justify-between items-center py-2 border-b border-[#E5E8EC] last:border-b-0">
+                    <Skeleton width="4rem" height="1rem" />
+                    <Skeleton width="8rem" height="1rem" class="flex-1 px-4" />
+                    <Skeleton width="6rem" height="1rem" class="shrink-0" />
+                    <div class="space-y-1 shrink-0 ml-4 text-right">
+                      <Skeleton width="6rem" height="0.875rem" />
+                      <Skeleton width="6rem" height="0.75rem" />
+                    </div>
+                    <Skeleton width="6rem" height="1.25rem" class="shrink-0 ml-4" />
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr v-else-if="deliveryJobs.length === 0">
               <td colspan="5" class="py-8 text-center text-sm text-[#9CA3AF]">Belum ada pekerjaan kurir.</td>
             </tr>
+
             <tr v-for="job in deliveryJobs" :key="job.id" class="hover:bg-[#F4F6F8]">
               <td class="py-3 px-3 font-mono text-xs">{{ job.order_id.substring(0,8) }}</td>
               <td class="py-3 px-3 text-xs font-medium">{{ job.driver_name }}</td>
@@ -362,7 +420,19 @@ onMounted(() => {
 
         <div class="card p-6">
           <h3 class="font-display font-semibold text-[#0D1117] mb-4 border-b pb-2">Daftar Voucher</h3>
-          <div class="space-y-3">
+          <div v-if="isLoading" class="space-y-3">
+            <div v-for="i in 2" :key="i" class="p-3 border rounded-lg flex justify-between">
+              <div class="space-y-2 flex-1">
+                <Skeleton width="4rem" height="1.25rem" />
+                <Skeleton width="6rem" height="0.75rem" />
+              </div>
+              <div class="text-right space-y-2 shrink-0 ml-4">
+                <Skeleton width="3rem" height="1rem" />
+                <Skeleton width="5rem" height="0.75rem" />
+              </div>
+            </div>
+          </div>
+          <div v-else class="space-y-3">
             <div v-for="v in vouchers" :key="v.id" class="p-3 border rounded-lg">
               <div class="flex justify-between items-start">
                 <div>
@@ -378,6 +448,7 @@ onMounted(() => {
             <p v-if="vouchers.length === 0" class="text-sm text-center text-[#9CA3AF]">Belum ada voucher</p>
           </div>
         </div>
+
       </div>
 
       <!-- Promos -->
@@ -412,7 +483,19 @@ onMounted(() => {
 
         <div class="card p-6">
           <h3 class="font-display font-semibold text-[#0D1117] mb-4 border-b pb-2">Daftar Promo</h3>
-          <div class="space-y-3">
+          <div v-if="isLoading" class="space-y-3">
+            <div v-for="i in 2" :key="i" class="p-3 border rounded-lg flex justify-between">
+              <div class="space-y-2 flex-1">
+                <Skeleton width="4rem" height="1.25rem" />
+                <Skeleton width="6rem" height="0.75rem" />
+              </div>
+              <div class="text-right space-y-2 shrink-0 ml-4">
+                <Skeleton width="3rem" height="1rem" />
+                <Skeleton width="5rem" height="0.75rem" />
+              </div>
+            </div>
+          </div>
+          <div v-else class="space-y-3">
             <div v-for="p in promos" :key="p.id" class="p-3 border rounded-lg">
               <div class="flex justify-between items-start">
                 <div>
@@ -428,6 +511,7 @@ onMounted(() => {
             <p v-if="promos.length === 0" class="text-sm text-center text-[#9CA3AF]">Belum ada promo</p>
           </div>
         </div>
+
       </div>
     </div>
   </div>

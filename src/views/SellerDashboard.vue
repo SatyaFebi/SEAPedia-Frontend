@@ -4,6 +4,8 @@ import { useAuthStore } from '../stores/auth'
 import { useProductsStore } from '../stores/products'
 import { useOrdersStore } from '../stores/orders'
 import { apiRequest } from '../utils/api'
+import Skeleton from '../components/Skeleton.vue'
+
 
 const authStore = useAuthStore()
 const productsStore = useProductsStore()
@@ -28,9 +30,16 @@ watch(
 )
 
 onMounted(async () => {
-  await productsStore.fetchProducts()
-  await ordersStore.fetchSellerOrders()
+  try {
+    await productsStore.fetchProducts()
+    await ordersStore.fetchSellerOrders()
+  } catch (err) {
+    console.error('Error mounting seller dashboard:', err)
+  } finally {
+    isLoading.value = false
+  }
 })
+
 
 const sellerProducts = computed(() => productsStore.getProductsByStore(store.value.id))
 const storeOrders = computed(() => ordersStore.getSellerOrders(store.value.id))
@@ -42,19 +51,26 @@ const processedOrders = computed(() =>
 )
 
 const activeTab = ref('dashboard')
+const isLoading = ref(true)
+const isReportLoading = ref(false)
 const reportData = ref({
   summary: { total_income: 0, total_orders: 0, processed_orders: 0, incoming_orders: 0 },
   orders: [],
 })
 
+
 async function fetchReportData() {
+  isReportLoading.value = true
   try {
     const data = await apiRequest('/reports/seller')
     reportData.value = data
   } catch (err) {
     console.error('Gagal mengambil laporan penjualan:', err)
+  } finally {
+    isReportLoading.value = false
   }
 }
+
 
 watch(activeTab, (newTab) => {
   if (newTab === 'report') {
@@ -218,7 +234,13 @@ const statusBadge = (status) => {
     <!-- Dashboard Tab -->
     <div v-show="activeTab === 'dashboard'">
       <!-- Stats row -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div v-for="i in 4" :key="i" class="stat-card space-y-2">
+          <Skeleton width="40%" height="0.75rem" />
+          <Skeleton width="70%" height="1.75rem" />
+        </div>
+      </div>
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="stat-card">
           <p class="stat-label">Pendapatan Selesai</p>
           <p class="stat-value text-primary-600">Rp{{ totalRevenue.toLocaleString('id-ID') }}</p>
@@ -243,6 +265,7 @@ const statusBadge = (status) => {
           <p class="text-xs text-[#9CA3AF]">ID: {{ store.id || '-' }}</p>
         </div>
       </div>
+
 
       <!-- Alert -->
       <div
@@ -272,16 +295,36 @@ const statusBadge = (status) => {
                 </tr>
               </thead>
               <tbody class="divide-y divide-[#E5E8EC]">
-                <tr v-if="sellerProducts.length === 0">
+                <tr v-if="isLoading">
+                  <td colspan="4" class="py-4 px-3">
+                    <div class="space-y-3">
+                      <div v-for="i in 3" :key="i" class="flex items-center justify-between gap-4 py-2 border-b border-[#E5E8EC] last:border-b-0">
+                        <div class="flex items-center gap-3 flex-1">
+                          <Skeleton width="2.25rem" height="2.25rem" class="shrink-0" />
+                          <div class="space-y-1.5 flex-1">
+                            <Skeleton width="40%" height="0.875rem" />
+                            <Skeleton width="70%" height="0.75rem" />
+                          </div>
+                        </div>
+                        <Skeleton width="3rem" height="1rem" class="shrink-0" />
+                        <Skeleton width="6rem" height="1rem" class="shrink-0" />
+                        <Skeleton width="5rem" height="1.25rem" class="shrink-0" />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-else-if="sellerProducts.length === 0">
                   <td colspan="4" class="py-8 text-center text-sm text-[#9CA3AF]">
                     Belum ada produk.
                   </td>
                 </tr>
                 <tr
+                  v-else
                   v-for="product in sellerProducts"
                   :key="product.id"
                   class="hover:bg-[#F4F6F8] transition-colors"
                 >
+
                   <td class="py-3 px-3">
                     <div class="flex items-center gap-3">
                       <img
@@ -337,12 +380,24 @@ const statusBadge = (status) => {
               Pesanan Masuk
             </h3>
 
-            <div v-if="incomingOrders.length === 0" class="py-6 text-center text-sm text-[#9CA3AF]">
-              Tidak ada pesanan baru.
+            <div v-if="isLoading" class="space-y-3">
+              <div v-for="i in 2" :key="i" class="border border-[#E5E8EC] rounded-xl p-4 bg-[#FAFAFA] space-y-2">
+                <div class="flex justify-between">
+                  <Skeleton width="4rem" height="1rem" />
+                  <Skeleton width="6rem" height="1rem" />
+                </div>
+                <Skeleton width="80%" height="0.875rem" />
+              </div>
             </div>
 
-            <div v-else class="space-y-3">
-              <div
+            <template v-else>
+              <div v-if="incomingOrders.length === 0" class="py-6 text-center text-sm text-[#9CA3AF]">
+                Tidak ada pesanan baru.
+              </div>
+
+              <div v-else class="space-y-3">
+                <div
+
                 v-for="order in incomingOrders"
                 :key="order.id"
                 class="border border-[#E5E8EC] rounded-xl p-4 space-y-3 bg-[#FAFAFA]"
@@ -434,7 +489,9 @@ const statusBadge = (status) => {
                 </div>
               </div>
             </div>
+            </template>
           </div>
+
 
           <!-- Order history -->
           <div class="card p-5 space-y-4">
@@ -442,15 +499,27 @@ const statusBadge = (status) => {
               Riwayat Pesanan
             </h3>
 
-            <div
-              v-if="processedOrders.length === 0"
-              class="py-4 text-center text-sm text-[#9CA3AF]"
-            >
-              Belum ada riwayat.
+            <div v-if="isLoading" class="space-y-3">
+              <div v-for="i in 2" :key="i" class="border border-[#E5E8EC] rounded-xl p-3 bg-[#FAFAFA] space-y-2">
+                <div class="flex justify-between">
+                  <Skeleton width="4rem" height="1rem" />
+                  <Skeleton width="3rem" height="1rem" />
+                </div>
+                <Skeleton width="80%" height="0.875rem" />
+              </div>
             </div>
 
-            <div v-else class="space-y-3 max-h-96 overflow-y-auto pr-1">
+            <template v-else>
               <div
+                v-if="processedOrders.length === 0"
+                class="py-4 text-center text-sm text-[#9CA3AF]"
+              >
+                Belum ada riwayat.
+              </div>
+
+              <div v-else class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                <div
+
                 v-for="order in processedOrders"
                 :key="order.id"
                 class="border border-[#E5E8EC] rounded-xl p-3 space-y-2 bg-[#FAFAFA] text-xs"
@@ -543,16 +612,24 @@ const statusBadge = (status) => {
                 </div>
               </div>
             </div>
+            </template>
           </div>
         </div>
       </div>
     </div>
+
     <!-- end dashboard tab -->
 
     <!-- Report Tab -->
     <div v-show="activeTab === 'report'" class="space-y-6">
       <!-- Summary Cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div v-if="isReportLoading" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div v-for="i in 4" :key="i" class="stat-card space-y-2">
+          <Skeleton width="50%" height="0.75rem" />
+          <Skeleton width="70%" height="1.75rem" />
+        </div>
+      </div>
+      <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="stat-card">
           <p class="stat-label">Total Pendapatan</p>
           <p class="stat-value text-primary-600">
@@ -581,14 +658,28 @@ const statusBadge = (status) => {
           Riwayat Transaksi
         </h3>
 
-        <div
-          v-if="!reportData.orders || reportData.orders.length === 0"
-          class="py-10 text-center text-sm text-[#9CA3AF]"
-        >
-          Belum ada data penjualan.
+        <div v-if="isReportLoading" class="space-y-3 py-4">
+          <div v-for="i in 3" :key="i" class="flex justify-between items-center py-2 border-b border-[#E5E8EC] last:border-0 text-sm">
+            <div class="flex gap-4 items-center flex-1">
+              <Skeleton width="4rem" height="1rem" />
+              <Skeleton width="6rem" height="1rem" />
+              <Skeleton width="15rem" height="1rem" />
+            </div>
+            <Skeleton width="4rem" height="1rem" class="shrink-0" />
+            <Skeleton width="6rem" height="1.25rem" class="shrink-0 ml-4" />
+          </div>
         </div>
 
-        <div v-else class="overflow-x-auto">
+        <template v-else>
+          <div
+            v-if="!reportData.orders || reportData.orders.length === 0"
+            class="py-10 text-center text-sm text-[#9CA3AF]"
+          >
+            Belum ada data penjualan.
+          </div>
+
+          <div v-else class="overflow-x-auto">
+
           <table class="w-full text-sm border-collapse">
             <thead>
               <tr class="border-b border-[#E5E8EC]">
@@ -629,9 +720,11 @@ const statusBadge = (status) => {
             </tbody>
           </table>
         </div>
+        </template>
       </div>
     </div>
     <!-- end report tab -->
+
 
     <!-- Add Product Modal -->
     <div

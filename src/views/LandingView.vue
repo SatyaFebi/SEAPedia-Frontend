@@ -7,6 +7,8 @@ import { useCartStore } from '../stores/cart'
 import { useReviewsStore } from '../stores/reviews'
 import Navbar from '../components/Navbar.vue'
 import Footer from '../components/Footer.vue'
+import Skeleton from '../components/Skeleton.vue'
+
 
 const authStore = useAuthStore()
 const productsStore = useProductsStore()
@@ -16,6 +18,8 @@ const router = useRouter()
 
 const searchInput = ref('')
 const selectedCategory = ref('Semua')
+const isLoading = ref(true)
+
 
 const filteredProducts = computed(() => {
   return productsStore.products.filter((p) => {
@@ -38,11 +42,18 @@ const reviewForm = ref({ name: '', comment: '', rating: 5 })
 const reviewSuccess = ref(false)
 
 onMounted(async () => {
-  await productsStore.fetchProducts()
-  if (authStore.isLoggedIn && authStore.activeRole === 'Buyer') {
-    await cartStore.fetchCart()
+  try {
+    await productsStore.fetchProducts()
+    if (authStore.isLoggedIn && authStore.activeRole === 'Buyer') {
+      await cartStore.fetchCart()
+    }
+  } catch (err) {
+    console.error('Error fetching landing data:', err)
+  } finally {
+    isLoading.value = false
   }
 })
+
 
 function filterByStore(storeName) {
   searchInput.value = storeName
@@ -210,12 +221,32 @@ const categories = ['Semua', 'Kuliner', 'Otomotif']
             <span class="badge badge-gray">{{ filteredProducts.length }} produk</span>
           </div>
 
+          <!-- Skeleton Loader -->
+          <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div v-for="i in 6" :key="i" class="card flex flex-col gap-3">
+              <Skeleton height="10rem" />
+              <div class="p-4 flex flex-col flex-1 gap-3">
+                <div class="space-y-2 flex-1">
+                  <Skeleton width="40%" height="0.75rem" />
+                  <Skeleton width="80%" height="1.25rem" />
+                  <Skeleton width="100%" height="0.875rem" />
+                  <Skeleton width="60%" height="0.875rem" />
+                </div>
+                <div class="flex items-center justify-between pt-3 border-t border-[#E5E8EC]">
+                  <Skeleton width="25%" height="0.75rem" />
+                  <Skeleton width="35%" height="1rem" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div
-            v-if="filteredProducts.length === 0"
+            v-else-if="filteredProducts.length === 0"
             class="card p-16 text-center text-[#9CA3AF] text-sm"
           >
             Produk tidak ditemukan. Coba kata kunci lain.
           </div>
+
 
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div
