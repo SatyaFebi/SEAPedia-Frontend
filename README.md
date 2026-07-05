@@ -18,7 +18,7 @@ Vue 3 SPA for the SEAPedia multi-role marketplace. Communicates with the Laravel
 
 - Node.js `^22.18.0` or `>=24.12.0`
 - npm
-- Backend running at `http://localhost:8000` (see [backend README](../backend/README.md))
+- Backend running at `http://localhost:8000` (see [backend README](https://github.com/SatyaFebi/SEAPedia-Backend))
 
 ---
 
